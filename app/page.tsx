@@ -1,65 +1,112 @@
-import Image from "next/image";
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Calendar, Clock, Users, Zap } from "lucide-react"
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      {/* Hero Section */}
+      <div className="container mx-auto px-4 py-16">
+        <nav className="flex justify-between items-center mb-16">
+          <div className="text-2xl font-bold text-indigo-600">BookingSaaS</div>
+          <div className="flex gap-4">
+            <Link href="/login">
+              <Button variant="ghost">Login</Button>
+            </Link>
+            <Link href="/signup">
+              <Button>Get Started</Button>
+            </Link>
+          </div>
+        </nav>
+
+        <div className="max-w-4xl mx-auto text-center py-20">
+          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+            Appointment Scheduling
+            <span className="block text-indigo-600">Made Simple</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            The all-in-one booking platform for service-based businesses.
+            Manage appointments, customers, and grow your business effortlessly.
           </p>
+          <div className="flex gap-4 justify-center">
+            <Link href="/signup">
+              <Button size="lg" className="text-lg px-8">
+                Start Free Trial
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button size="lg" variant="outline" className="text-lg px-8">
+                Sign In
+              </Button>
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Features */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mt-20 max-w-6xl mx-auto">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4">
+              <Calendar className="w-6 h-6 text-indigo-600" />
+            </div>
+            <h3 className="font-semibold text-lg mb-2">Online Booking</h3>
+            <p className="text-gray-600 text-sm">
+              Let customers book appointments 24/7 with your custom booking page
+            </p>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
+              <Clock className="w-6 h-6 text-purple-600" />
+            </div>
+            <h3 className="font-semibold text-lg mb-2">Smart Scheduling</h3>
+            <p className="text-gray-600 text-sm">
+              Automated availability management with buffer times and time zones
+            </p>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center mb-4">
+              <Users className="w-6 h-6 text-pink-600" />
+            </div>
+            <h3 className="font-semibold text-lg mb-2">Customer Management</h3>
+            <p className="text-gray-600 text-sm">
+              Keep track of customer history, notes, and booking patterns
+            </p>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+              <Zap className="w-6 h-6 text-green-600" />
+            </div>
+            <h3 className="font-semibold text-lg mb-2">Instant Notifications</h3>
+            <p className="text-gray-600 text-sm">
+              Automatic email reminders for you and your customers
+            </p>
+          </div>
         </div>
-      </main>
+
+        {/* CTA Section */}
+        <div className="mt-32 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-12 text-center text-white max-w-4xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Ready to streamline your bookings?
+          </h2>
+          <p className="text-lg mb-8 text-indigo-100">
+            Join hundreds of businesses managing their appointments with BookingSaaS
+          </p>
+          <Link href="/signup">
+            <Button size="lg" variant="secondary" className="text-lg px-8">
+              Create Your Free Account
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200 mt-20 py-8">
+        <div className="container mx-auto px-4 text-center text-gray-600">
+          <p>&copy; 2024 BookingSaaS. Built with Next.js and Prisma.</p>
+        </div>
+      </footer>
     </div>
-  );
+  )
 }
