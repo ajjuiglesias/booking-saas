@@ -25,6 +25,7 @@ interface TimeSlot {
   time: string
   datetime: string
   available: boolean
+  status: 'available' | 'past' | 'booked'
 }
 
 export default function BookingPage() {
@@ -103,8 +104,10 @@ export default function BookingPage() {
     }
   }, [selectedDate, selectedService, business])
 
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const handleBooking = async () => {
-    setIsLoading(true)
+    setIsSubmitting(true)
     try {
       const response = await fetch("/api/public/bookings", {
         method: "POST",
@@ -121,14 +124,14 @@ export default function BookingPage() {
 
       if (response.ok) {
         const data = await response.json()
+        // Don't set isSubmitting to false - keep loader showing during redirect
         router.push(`/book/${slug}/confirmation?id=${data.id}`)
       } else {
         throw new Error("Booking failed")
       }
     } catch (error) {
       toast.error("Failed to create booking")
-    } finally {
-      setIsLoading(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -216,7 +219,13 @@ export default function BookingPage() {
                       mode="single"
                       selected={selectedDate}
                       onSelect={setSelectedDate}
-                      disabled={(date) => date < new Date() || date > addDays(new Date(), 30)}
+                      disabled={(date) => {
+                        const today = new Date()
+                        today.setHours(0, 0, 0, 0)
+                        const checkDate = new Date(date)
+                        checkDate.setHours(0, 0, 0, 0)
+                        return checkDate < today || date > addDays(new Date(), 30)
+                      }}
                       className="rounded-md border mx-auto"
                     />
                   </div>
@@ -228,17 +237,33 @@ export default function BookingPage() {
                       <p className="text-sm text-muted-foreground text-center py-8">No slots available for this date.</p>
                     ) : (
                       <div className="grid grid-cols-3 gap-2 max-h-[300px] overflow-y-auto pr-2">
-                        {timeSlots.map((slot) => (
-                          <Button
-                            key={slot.time}
-                            variant={selectedTime === slot.datetime ? "default" : "outline"}
-                            className="w-full text-sm"
-                            disabled={!slot.available}
-                            onClick={() => setSelectedTime(slot.datetime)}
-                          >
-                            {slot.time}
-                          </Button>
-                        ))}
+                        {timeSlots.map((slot) => {
+                          const isSelected = selectedTime === slot.datetime
+                          
+                          // Determine button styling based on status
+                          let buttonClass = "w-full text-sm"
+                          if (slot.status === 'past') {
+                            buttonClass += " bg-gray-100 text-gray-400 cursor-not-allowed"
+                          } else if (slot.status === 'booked') {
+                            buttonClass += " bg-red-50 text-red-400 border-red-200 cursor-not-allowed"
+                          } else if (isSelected) {
+                            buttonClass += " bg-indigo-600 text-white hover:bg-indigo-700"
+                          } else {
+                            buttonClass += " bg-white border-gray-300 hover:bg-gray-50"
+                          }
+                          
+                          return (
+                            <Button
+                              key={slot.time}
+                              variant="outline"
+                              className={buttonClass}
+                              disabled={!slot.available}
+                              onClick={() => setSelectedTime(slot.datetime)}
+                            >
+                              {slot.time}
+                            </Button>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
@@ -329,8 +354,15 @@ export default function BookingPage() {
               </CardContent>
               <CardFooter className="flex justify-between">
                 <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
-                <Button onClick={handleBooking} disabled={!customerDetails.name || !customerDetails.phone || !customerDetails.email}>
-                  Confirm Booking
+                <Button onClick={handleBooking} disabled={!customerDetails.name || !customerDetails.phone || !customerDetails.email || isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating booking...
+                    </>
+                  ) : (
+                    "Confirm Booking"
+                  )}
                 </Button>
               </CardFooter>
             </>

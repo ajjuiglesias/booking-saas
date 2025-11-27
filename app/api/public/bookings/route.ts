@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { addMinutes, parseISO } from "date-fns"
+import { sendBookingConfirmation, sendBookingNotification } from "@/lib/email"
 
 export async function POST(request: NextRequest) {
     try {
@@ -68,11 +69,26 @@ export async function POST(request: NextRequest) {
                 endTime: end,
                 status: "confirmed",
                 customerNotes: customer.notes,
-                paymentStatus: "pending"
+                paymentStatus: "pending",
+                paymentAmount: service.price
+            },
+            include: {
+                customer: true,
+                service: true,
+                business: true
             }
         })
 
-        // TODO: Send confirmation email here
+        // 6. Send emails (don't fail booking if emails fail)
+        try {
+            await Promise.all([
+                sendBookingConfirmation(booking),
+                sendBookingNotification(booking)
+            ])
+        } catch (emailError) {
+            console.error("Failed to send emails:", emailError)
+            // Continue anyway - booking is created
+        }
 
         return NextResponse.json({
             success: true,
