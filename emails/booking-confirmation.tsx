@@ -98,15 +98,26 @@ export default function BookingConfirmationEmail({
           </Section>
 
           <Section style={buttonSection}>
-            <Button style={button} href={`${process.env.NEXT_PUBLIC_APP_URL}/booking/${bookingId}`}>
-              View Booking Details
-            </Button>
+            <table style={{ width: '100%', borderCollapse: 'collapse' as const }}>
+              <tr>
+                <td style={{ padding: '0 8px', textAlign: 'center' as const }}>
+                  <Button style={button} href={`${process.env.NEXT_PUBLIC_APP_URL}/reschedule/${bookingId}`}>
+                    Reschedule
+                  </Button>
+                </td>
+                <td style={{ padding: '0 8px', textAlign: 'center' as const }}>
+                  <Button style={cancelButton} href={`${process.env.NEXT_PUBLIC_APP_URL}/cancel/${bookingId}`}>
+                    Cancel Booking
+                  </Button>
+                </td>
+              </tr>
+            </table>
           </Section>
 
           <Hr style={hr} />
 
           <Text style={footer}>
-            Need to make changes? Contact {businessName} directly.
+            You can reschedule or cancel your booking anytime before your appointment.
           </Text>
           
           <Text style={footer}>
@@ -198,6 +209,18 @@ const buttonSection = {
 
 const button = {
   backgroundColor: '#6366f1',
+  borderRadius: '6px',
+  color: '#fff',
+  fontSize: '16px',
+  fontWeight: 'bold',
+  textDecoration: 'none',
+  textAlign: 'center' as const,
+  display: 'inline-block',
+  padding: '12px 32px',
+}
+
+const cancelButton = {
+  backgroundColor: '#ef4444',
   borderRadius: '6px',
   color: '#fff',
   fontSize: '16px',

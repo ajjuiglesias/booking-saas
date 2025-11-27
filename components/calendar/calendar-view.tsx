@@ -11,6 +11,7 @@ import "react-big-calendar/lib/css/react-big-calendar.css"
 import { Card } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { BookingDetailModal } from "./booking-detail-modal"
 
 const locales = {
   "en-US": enUS,
@@ -37,6 +38,8 @@ export default function CalendarView() {
   const [isLoading, setIsLoading] = useState(true)
   const [view, setView] = useState(Views.WEEK)
   const [date, setDate] = useState(new Date())
+  const [selectedBooking, setSelectedBooking] = useState<any | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
 
   const fetchBookings = async (start: Date, end: Date) => {
     setIsLoading(true)
@@ -44,6 +47,7 @@ export default function CalendarView() {
       const params = new URLSearchParams({
         start: start.toISOString(),
         end: end.toISOString(),
+        futureOnly: "true", // Only show future bookings in calendar
       })
       const response = await fetch(`/api/bookings?${params}`)
       if (response.ok) {
@@ -104,9 +108,22 @@ export default function CalendarView() {
           },
         })}
         onSelectEvent={(event) => {
-          // Open booking details modal
-          console.log("Selected booking:", event)
-          toast.info(`Booking: ${event.title}`)
+          setSelectedBooking(event.resource)
+          setModalOpen(true)
+        }}
+      />
+      
+      <BookingDetailModal
+        booking={selectedBooking}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onBookingUpdated={() => {
+          // Refresh bookings after cancellation
+          const start = new Date(date)
+          start.setDate(start.getDate() - 7)
+          const end = new Date(date)
+          end.setDate(end.getDate() + 7)
+          fetchBookings(start, end)
         }}
       />
     </div>

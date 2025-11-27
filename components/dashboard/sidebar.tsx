@@ -8,7 +8,7 @@ import {
   Calendar,
   Users,
   Settings,
-  Scissors,
+  Briefcase,
   Clock,
   BarChart3,
   LogOut
@@ -28,14 +28,19 @@ const sidebarItems = [
     icon: Calendar,
   },
   {
-    title: "Services",
-    href: "/dashboard/services",
-    icon: Scissors,
+    title: "Bookings",
+    href: "/dashboard/bookings",
+    icon: Calendar,
   },
   {
     title: "Customers",
     href: "/dashboard/customers",
     icon: Users,
+  },
+  {
+    title: "Services",
+    href: "/dashboard/services",
+    icon: Briefcase,
   },
   {
     title: "Availability",

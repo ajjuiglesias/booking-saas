@@ -151,8 +151,15 @@ model Booking {
   customerNotes String?
   internalNotes String?
   
+  // Cancellation tracking
   cancellationReason String?
   cancelledAt        DateTime?
+  cancelledBy        String?      // "customer" or "business"
+  
+  // Reschedule tracking
+  rescheduledFrom    String?      // Original booking ID if this is a rescheduled booking
+  rescheduledTo      String?      // New booking ID if this booking was rescheduled
+  rescheduledAt      DateTime?
   
   // Payment
   paymentStatus String @default("pending") // pending, paid, refunded
