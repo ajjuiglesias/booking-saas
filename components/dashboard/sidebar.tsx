@@ -43,8 +43,8 @@ const sidebarItems = [
     icon: Clock,
   },
   {
-    title: "Reports",
-    href: "/dashboard/reports",
+    title: "Analytics",
+    href: "/dashboard/analytics",
     icon: BarChart3,
   },
   {

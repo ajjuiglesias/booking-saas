@@ -241,7 +241,7 @@ export function CustomerDetailModal({
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell>${(booking.paymentAmount || 0).toFixed(2)}</TableCell>
+                            <TableCell>${Number(booking.paymentAmount || 0).toFixed(2)}</TableCell>
                             <TableCell>
                               <Badge variant={getStatusColor(booking.status)}>
                                 {booking.status}
