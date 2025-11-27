@@ -34,6 +34,15 @@ model Business {
   cancellationPolicy String @default("flexible") // flexible, moderate, strict
   cancellationHours  Int    @default(24)
   
+  // Notification preferences
+  emailNotifications     Boolean  @default(true)
+  smsNotifications       Boolean  @default(false)
+  notifyOnNewBooking     Boolean  @default(true)
+  notifyOnCancellation   Boolean  @default(true)
+  notifyOnReschedule     Boolean  @default(true)
+  reminderEmailEnabled   Boolean  @default(true)
+  reminderEmailHours     Int      @default(24)
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   

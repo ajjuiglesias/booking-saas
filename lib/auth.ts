@@ -51,13 +51,29 @@ export const authConfig: NextAuthConfig = {
             if (user) {
                 token.id = user.id
                 token.slug = (user as any).slug
+                token.email = user.email
             }
             return token
         },
         async session({ session, token }) {
-            if (session.user) {
-                session.user.id = token.id as string
-                session.user.slug = token.slug as string
+            if (session.user && token.email) {
+                // Fetch latest business data from database
+                const business = await prisma.business.findUnique({
+                    where: { email: token.email as string },
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        slug: true,
+                    }
+                })
+
+                if (business) {
+                    session.user.id = business.id
+                    session.user.name = business.name
+                    session.user.email = business.email
+                    session.user.slug = business.slug
+                }
             }
             return session
         },
