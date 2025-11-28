@@ -22,6 +22,8 @@ import { Plus, MoreHorizontal, Pencil, Trash, Loader2 } from "lucide-react"
 import { ServiceForm } from "@/components/services/service-form"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { TableSkeleton } from "@/components/ui/skeletons"
+import { EmptyState } from "@/components/ui/empty-state"
 
 interface Service {
   id: string
@@ -111,15 +113,19 @@ export default function ServicesPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                </TableCell>
-              </TableRow>
+              <TableSkeleton rows={5} columns={5} />
             ) : services.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  No services found. Add your first service to get started.
+                <TableCell colSpan={5} className="h-24 text-center">
+                  <EmptyState
+                    icon={Plus}
+                    title="No services found"
+                    description="Add your first service to get started."
+                    action={{
+                      label: "Add Service",
+                      onClick: handleAddNew
+                    }}
+                  />
                 </TableCell>
               </TableRow>
             ) : (

@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { Loader2, Check, ChevronLeft, ChevronRight, Clock, Calendar as CalendarIcon } from "lucide-react"
+import { Check, ChevronLeft, ChevronRight, Clock, Calendar as CalendarIcon, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { BookingPageSkeleton, TimeSlotsSkeleton } from "@/components/ui/booking-skeletons"
 
 interface Service {
   id: string
@@ -77,6 +78,41 @@ export default function BookingPage() {
   // Time slots fetching
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
   const [isLoadingSlots, setIsLoadingSlots] = useState(false)
+  const [blockedDates, setBlockedDates] = useState<Date[]>([])
+  const [availableDays, setAvailableDays] = useState<number[]>([]) // Array of available day numbers (0-6)
+
+  // Fetch blocked dates and available days when business is loaded
+  useEffect(() => {
+    if (business) {
+      const fetchAvailabilityData = async () => {
+        try {
+          const response = await fetch(`/api/public/availability/${business.id}`)
+          if (response.ok) {
+            const data = await response.json()
+            
+            // Set blocked dates
+            if (data.blockedDates && Array.isArray(data.blockedDates)) {
+              const dates = data.blockedDates.map((bd: any) => new Date(bd.date))
+              setBlockedDates(dates)
+            }
+            
+            // Set available days (days of week that are enabled)
+            if (data.availability && Array.isArray(data.availability)) {
+              const enabledDays = data.availability
+                .filter((a: any) => a.isAvailable)
+                .map((a: any) => Number(a.dayOfWeek))
+              setAvailableDays(enabledDays)
+            }
+          } else {
+            console.error('Failed to fetch availability:', response.status)
+          }
+        } catch (error) {
+          console.error("Failed to load availability data:", error)
+        }
+      }
+      fetchAvailabilityData()
+    }
+  }, [business])
 
   useEffect(() => {
     if (selectedDate && selectedService && business) {
@@ -136,7 +172,7 @@ export default function BookingPage() {
   }
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+    return <BookingPageSkeleton />
   }
 
   if (!business) {
@@ -144,11 +180,11 @@ export default function BookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold">{business.name}</h1>
+          <h1 className="text-2xl font-bold dark:text-white">{business.name}</h1>
           <p className="text-muted-foreground">Book an appointment</p>
         </div>
 
@@ -159,7 +195,7 @@ export default function BookingPage() {
               key={s}
               className={cn(
                 "h-2 w-16 rounded-full transition-colors",
-                step >= s ? "bg-indigo-600" : "bg-gray-200"
+                step >= s ? "bg-indigo-600 dark:bg-indigo-500" : "bg-gray-200 dark:bg-gray-700"
               )}
             />
           ))}
@@ -224,7 +260,26 @@ export default function BookingPage() {
                         today.setHours(0, 0, 0, 0)
                         const checkDate = new Date(date)
                         checkDate.setHours(0, 0, 0, 0)
-                        return checkDate < today || date > addDays(new Date(), 30)
+                        const maxDate = new Date()
+                        maxDate.setDate(maxDate.getDate() + 30)
+                        maxDate.setHours(0, 0, 0, 0)
+                        
+                        // Disable past dates and dates beyond 30 days
+                        if (checkDate < today || checkDate > maxDate) return true
+                        
+                        // Disable if this day of week is not available
+                        // Only apply this check if we have availability data loaded
+                        if (availableDays.length > 0) {
+                          const dayOfWeek = date.getDay()
+                          if (!availableDays.includes(dayOfWeek)) return true
+                        }
+                        
+                        // Disable blocked dates - normalize both dates for comparison
+                        return blockedDates.some(blockedDate => {
+                          const blocked = new Date(blockedDate)
+                          blocked.setHours(0, 0, 0, 0)
+                          return blocked.getTime() === checkDate.getTime()
+                        })
                       }}
                       className="rounded-md border mx-auto"
                     />
@@ -232,7 +287,7 @@ export default function BookingPage() {
                   <div className="flex-1">
                     <h4 className="font-medium mb-4">Available Times</h4>
                     {isLoadingSlots ? (
-                      <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                      <TimeSlotsSkeleton />
                     ) : timeSlots.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-8">No slots available for this date.</p>
                     ) : (

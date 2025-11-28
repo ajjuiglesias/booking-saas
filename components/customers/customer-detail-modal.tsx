@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, Mail, Phone, Calendar, DollarSign, CheckCircle, Clock } from "lucide-react"
+import { ModalSkeleton } from "@/components/ui/form-skeletons"
 import { toast } from "sonner"
 import { format } from "date-fns"
 
@@ -117,9 +118,7 @@ export function CustomerDetailModal({
         </DialogHeader>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
+          <ModalSkeleton />
         ) : customer && stats ? (
           <div className="space-y-6">
             {/* Customer Info */}
@@ -173,7 +172,7 @@ export function CustomerDetailModal({
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    ${stats.totalRevenue.toFixed(2)}
+                    ₹{stats.totalRevenue.toFixed(2)}
                   </div>
                 </CardContent>
               </Card>
@@ -241,7 +240,7 @@ export function CustomerDetailModal({
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell>${Number(booking.paymentAmount || 0).toFixed(2)}</TableCell>
+                            <TableCell>₹{Number(booking.paymentAmount || 0).toFixed(2)}</TableCell>
                             <TableCell>
                               <Badge variant={getStatusColor(booking.status)}>
                                 {booking.status}

@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowUpIcon, ArrowDownIcon, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface KPICardProps {
   title: string
@@ -10,9 +11,10 @@ interface KPICardProps {
   change?: number
   icon?: React.ReactNode
   format?: "currency" | "number" | "percentage"
+  isLoading?: boolean
 }
 
-export function KPICard({ title, value, change, icon, format = "number" }: KPICardProps) {
+export function KPICard({ title, value, change, icon, format = "number", isLoading = false }: KPICardProps) {
   const formattedValue = typeof value === "number" 
     ? format === "currency" 
       ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value)
@@ -31,19 +33,28 @@ export function KPICard({ title, value, change, icon, format = "number" }: KPICa
         {icon}
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{formattedValue}</div>
-        {change !== undefined && (
-          <p className={cn(
-            "text-xs flex items-center gap-1 mt-1",
-            isPositive && "text-green-600",
-            isNegative && "text-red-600",
-            !isPositive && !isNegative && "text-muted-foreground"
-          )}>
-            {isPositive && <ArrowUpIcon className="h-3 w-3" />}
-            {isNegative && <ArrowDownIcon className="h-3 w-3" />}
-            {!isPositive && !isNegative && <TrendingUp className="h-3 w-3" />}
-            {Math.abs(change * 100).toFixed(1)}% from last period
-          </p>
+        {isLoading ? (
+          <>
+            <Skeleton className="h-8 w-[120px] mb-1" />
+            <Skeleton className="h-3 w-[150px]" />
+          </>
+        ) : (
+          <>
+            <div className="text-2xl font-bold">{formattedValue}</div>
+            {change !== undefined && (
+              <p className={cn(
+                "text-xs flex items-center gap-1 mt-1",
+                isPositive && "text-green-600",
+                isNegative && "text-red-600",
+                !isPositive && !isNegative && "text-muted-foreground"
+              )}>
+                {isPositive && <ArrowUpIcon className="h-3 w-3" />}
+                {isNegative && <ArrowDownIcon className="h-3 w-3" />}
+                {!isPositive && !isNegative && <TrendingUp className="h-3 w-3" />}
+                {Math.abs(change * 100).toFixed(1)}% from last period
+              </p>
+            )}
+          </>
         )}
       </CardContent>
     </Card>

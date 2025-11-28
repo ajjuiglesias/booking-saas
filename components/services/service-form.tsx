@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -64,6 +64,19 @@ export function ServiceForm({ open, onOpenChange, service }: ServiceFormProps) {
     },
   })
 
+  // Reset form when service changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        name: service?.name || "",
+        description: service?.description || "",
+        durationMinutes: service?.durationMinutes?.toString() || "60",
+        price: service?.price?.toString() || "",
+        color: service?.color || "#6366f1",
+      })
+    }
+  }, [service, open, form])
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true)
     try {
@@ -81,7 +94,8 @@ export function ServiceForm({ open, onOpenChange, service }: ServiceFormProps) {
       toast.success(service ? "Service updated" : "Service created")
       onOpenChange(false)
       router.refresh()
-      form.reset()
+      // Reload the page to refresh the services list
+      window.location.reload()
     } catch (error) {
       toast.error("Something went wrong")
     } finally {
@@ -143,7 +157,7 @@ export function ServiceForm({ open, onOpenChange, service }: ServiceFormProps) {
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price ($)</FormLabel>
+                    <FormLabel>Price (₹)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="0.00" {...field} />
                     </FormControl>

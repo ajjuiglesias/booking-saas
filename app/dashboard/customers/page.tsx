@@ -17,6 +17,9 @@ import { Search, Loader2, Users, UserPlus, Eye, Calendar } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { CustomerDetailModal } from "@/components/customers/customer-detail-modal"
+import { Skeleton } from "@/components/ui/skeleton"
+import { TableSkeleton } from "@/components/ui/skeletons"
+import { EmptyState } from "@/components/ui/empty-state"
 
 interface Customer {
   id: string
@@ -103,7 +106,11 @@ export default function CustomersPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pagination.total}</div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-[60px]" />
+            ) : (
+              <div className="text-2xl font-bold">{pagination.total}</div>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -112,9 +119,13 @@ export default function CustomersPage() {
             <UserPlus className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {customers.filter(c => c.totalBookings > 0).length}
-            </div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-[60px]" />
+            ) : (
+              <div className="text-2xl font-bold">
+                {customers.filter(c => c.totalBookings > 0).length}
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -123,12 +134,16 @@ export default function CustomersPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {pagination.total > 0 
-                ? (customers.reduce((sum, c) => sum + c.totalBookings, 0) / customers.length).toFixed(1)
-                : "0"
-              }
-            </div>
+            {isLoading ? (
+              <Skeleton className="h-8 w-[60px]" />
+            ) : (
+              <div className="text-2xl font-bold">
+                {pagination.total > 0 
+                  ? (customers.reduce((sum, c) => sum + c.totalBookings, 0) / customers.length).toFixed(1)
+                  : "0"
+                }
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -165,15 +180,15 @@ export default function CustomersPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                </TableCell>
-              </TableRow>
+              <TableSkeleton rows={5} columns={5} />
             ) : customers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  {search ? "No customers found matching your search." : "No customers yet. They'll appear here after their first booking."}
+                <TableCell colSpan={5} className="h-24 text-center">
+                  <EmptyState
+                    icon={Users}
+                    title="No customers found"
+                    description={search ? "No customers found matching your search." : "No customers yet. They'll appear here after their first booking."}
+                  />
                 </TableCell>
               </TableRow>
             ) : (

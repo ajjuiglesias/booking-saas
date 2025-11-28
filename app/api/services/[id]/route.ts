@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     const session = await auth()
     if (!session?.user?.id) {
@@ -12,12 +12,13 @@ export async function PATCH(
     }
 
     try {
+        const { id } = await params
         const body = await request.json()
         const { name, description, durationMinutes, price, color, isActive } = body
 
         // Verify ownership
         const existingService = await prisma.service.findUnique({
-            where: { id: params.id }
+            where: { id }
         })
 
         if (!existingService || existingService.businessId !== session.user.id) {
@@ -25,7 +26,7 @@ export async function PATCH(
         }
 
         const service = await prisma.service.update({
-            where: { id: params.id },
+            where: { id },
             data: {
                 name,
                 description,
@@ -44,7 +45,7 @@ export async function PATCH(
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     const session = await auth()
     if (!session?.user?.id) {
@@ -52,9 +53,11 @@ export async function DELETE(
     }
 
     try {
+        const { id } = await params
+
         // Verify ownership
         const existingService = await prisma.service.findUnique({
-            where: { id: params.id }
+            where: { id }
         })
 
         if (!existingService || existingService.businessId !== session.user.id) {
@@ -62,7 +65,7 @@ export async function DELETE(
         }
 
         await prisma.service.delete({
-            where: { id: params.id }
+            where: { id }
         })
 
         return NextResponse.json({ success: true })

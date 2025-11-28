@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/table"
 import { CancelBookingButton } from "@/components/bookings/cancel-booking-button"
 import { MarkNoShowButton } from "@/components/bookings/mark-noshow-button"
+import { TableSkeleton } from "@/components/ui/skeletons"
+import { EmptyState } from "@/components/ui/empty-state"
 
 interface Booking {
   id: string
@@ -129,13 +131,23 @@ export default function BookingHistoryPage() {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-                </div>
+                <TableSkeleton rows={5} />
               ) : bookings.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No bookings found
-                </div>
+                <EmptyState
+                  icon={Calendar}
+                  title="No bookings found"
+                  description={
+                    activeTab === "upcoming"
+                      ? "You don't have any upcoming bookings."
+                      : activeTab === "completed"
+                      ? "You haven't completed any bookings yet."
+                      : activeTab === "cancelled"
+                      ? "You don't have any cancelled bookings."
+                      : activeTab === "no_show"
+                      ? "You don't have any no-show bookings."
+                      : "No bookings found matching your criteria."
+                  }
+                />
               ) : (
                 <Table>
                   <TableHeader>

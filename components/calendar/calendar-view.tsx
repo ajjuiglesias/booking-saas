@@ -1,17 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar, dateFnsLocalizer, Views } from "react-big-calendar"
-import format from "date-fns/format"
-import parse from "date-fns/parse"
-import startOfWeek from "date-fns/startOfWeek"
-import getDay from "date-fns/getDay"
-import enUS from "date-fns/locale/en-US"
+import { Calendar, dateFnsLocalizer, Views, View } from "react-big-calendar"
+import { format, parse, startOfWeek, getDay } from "date-fns"
+import { enUS } from "date-fns/locale"
 import "react-big-calendar/lib/css/react-big-calendar.css"
 import { Card } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { BookingDetailModal } from "./booking-detail-modal"
+import { CalendarSkeleton } from "@/components/ui/skeletons"
 
 const locales = {
   "en-US": enUS,
@@ -36,7 +34,7 @@ interface Booking {
 export default function CalendarView() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [view, setView] = useState(Views.WEEK)
+  const [view, setView] = useState<View>(Views.WEEK)
   const [date, setDate] = useState(new Date())
   const [selectedBooking, setSelectedBooking] = useState<any | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
@@ -87,6 +85,10 @@ export default function CalendarView() {
       end = range.end
     }
     fetchBookings(start, end)
+  }
+
+  if (isLoading && bookings.length === 0) {
+    return <CalendarSkeleton />
   }
 
   return (

@@ -1,4 +1,3 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 
 interface Booking {
@@ -19,11 +18,7 @@ export function RecentBookings({ bookings }: { bookings: Booking[] }) {
       ) : (
         bookings.map((booking) => (
           <div key={booking.id} className="flex items-center">
-            <Avatar className="h-9 w-9">
-              <AvatarImage src={`https://avatar.vercel.sh/${booking.customerEmail}`} alt="Avatar" />
-              <AvatarFallback>{booking.customerName[0]}</AvatarFallback>
-            </Avatar>
-            <div className="ml-4 space-y-1">
+            <div className="space-y-1">
               <p className="text-sm font-medium leading-none">{booking.customerName}</p>
               <p className="text-sm text-muted-foreground">
                 {booking.serviceName}
@@ -32,7 +27,7 @@ export function RecentBookings({ bookings }: { bookings: Booking[] }) {
             <div className="ml-auto flex items-center gap-4">
               <div className="text-sm text-muted-foreground">{booking.time}</div>
               <div className="font-medium">
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(booking.amount)}
+                ₹{booking.amount.toFixed(2)}
               </div>
               <Badge 
                 variant={

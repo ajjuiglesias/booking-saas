@@ -104,7 +104,7 @@ export function BookingDetailModal({
                   <span>Amount</span>
                 </div>
                 <span className="font-semibold">
-                  ${Number(booking.paymentAmount).toFixed(2)}
+                  ₹{Number(booking.paymentAmount).toFixed(2)}
                 </span>
               </div>
             </div>

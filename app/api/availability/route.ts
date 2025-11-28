@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
             }),
             prisma.business.findUnique({
                 where: { id: session.user.id },
-                select: { bufferMinutes: true }
+                select: { bufferMinutes: true, slotDuration: true }
             }),
             prisma.blockedDate.findMany({
                 where: { businessId: session.user.id },
@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
             availability,
             bufferMinutes: business?.bufferMinutes || 0,
+            slotDuration: business?.slotDuration || 30,
             blockedDates
         })
     } catch (error) {
@@ -42,13 +43,17 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json()
-        const { availability, bufferMinutes } = body
+        const { availability, bufferMinutes, slotDuration } = body
 
-        // Update buffer time
-        if (typeof bufferMinutes === 'number') {
+        // Update buffer time and slot duration
+        const updateData: any = {}
+        if (typeof bufferMinutes === 'number') updateData.bufferMinutes = bufferMinutes
+        if (typeof slotDuration === 'number') updateData.slotDuration = slotDuration
+
+        if (Object.keys(updateData).length > 0) {
             await prisma.business.update({
                 where: { id: session.user.id },
-                data: { bufferMinutes }
+                data: updateData
             })
         }
 
@@ -70,6 +75,26 @@ export async function POST(request: NextRequest) {
                             startTime: a.startTime,
                             endTime: a.endTime,
                             isAvailable: a.isAvailable
+                        }))
+                    })
+                }
+            })
+        }
+
+        // Update blocked dates
+        if (body.blockedDates && Array.isArray(body.blockedDates)) {
+            await prisma.$transaction(async (tx) => {
+                // Delete existing blocked dates
+                await tx.blockedDate.deleteMany({
+                    where: { businessId: session.user.id }
+                })
+
+                // Create new blocked dates
+                if (body.blockedDates.length > 0) {
+                    await tx.blockedDate.createMany({
+                        data: body.blockedDates.map((dateStr: string) => ({
+                            businessId: session.user.id,
+                            date: new Date(dateStr)
                         }))
                     })
                 }

@@ -26,12 +26,12 @@ export async function GET(request: NextRequest) {
         // Get business settings
         const business = await prisma.business.findUnique({
             where: { id: businessId },
-            select: { bufferMinutes: true }
+            select: { bufferMinutes: true, slotDuration: true }
         })
 
-        // Parse the selected date
+        // Parse the selected date and get day of week in UTC to avoid timezone issues
         const selectedDate = parseISO(date)
-        const dayOfWeek = selectedDate.getDay()
+        const dayOfWeek = selectedDate.getUTCDay()
 
         // Get availability for this day
         const availability = await prisma.availability.findFirst({
@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
         })
 
         if (!availability) {
+            console.log(`No availability found for businessId: ${businessId}, dayOfWeek: ${dayOfWeek}`)
             return NextResponse.json([])
         }
 
@@ -111,8 +112,9 @@ export async function GET(request: NextRequest) {
                 status
             })
 
-            // Move to next slot (duration + buffer)
-            currentTime = addMinutes(currentTime, service.durationMinutes + (business?.bufferMinutes || 0))
+            // Move to next slot using business slot duration + buffer
+            const slotDuration = business?.slotDuration || 30
+            currentTime = addMinutes(currentTime, slotDuration + (business?.bufferMinutes || 0))
         }
 
         return NextResponse.json(slots)

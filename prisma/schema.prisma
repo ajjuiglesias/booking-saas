@@ -29,6 +29,7 @@ model Business {
   minNoticeHours Int @default(2)
   maxAdvanceDays Int @default(30)
   bufferMinutes  Int @default(0)
+  slotDuration   Int @default(30) // Duration of each booking slot in minutes
   
   // Cancellation policy
   cancellationPolicy String @default("flexible") // flexible, moderate, strict

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { signOut } from "next-auth/react"
 import { User, Settings, LogOut } from "lucide-react"
 import Link from "next/link"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export function DashboardHeader() {
   const { data: session } = useSession()
@@ -25,13 +26,14 @@ export function DashboardHeader() {
     .toUpperCase() || "U"
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white px-6 shadow-sm">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white dark:bg-gray-950 px-6 shadow-sm">
       <MobileNav />
       <div className="flex flex-1 items-center justify-between">
-        <h1 className="text-lg font-semibold md:text-xl text-gray-800">
+        <h1 className="text-lg font-semibold md:text-xl text-gray-800 dark:text-gray-100">
           {session?.user?.name ? `Welcome, ${session.user.name}` : "Dashboard"}
         </h1>
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">

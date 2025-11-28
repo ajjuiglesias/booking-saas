@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
+import { FormSkeleton } from "@/components/ui/form-skeletons"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -133,11 +134,7 @@ export default function ProfileForm() {
   }
 
   if (isFetching) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    )
+    return <FormSkeleton />
   }
 
   return (

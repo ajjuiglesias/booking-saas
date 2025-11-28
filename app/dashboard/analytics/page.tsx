@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { startOfMonth, endOfMonth, subMonths, format } from "date-fns"
-import { Calendar, DollarSign, Users, TrendingUp, Loader2 } from "lucide-react"
+import { Calendar, DollarSign, Users, TrendingUp } from "lucide-react"
 import { KPICard } from "@/components/analytics/kpi-card"
 import { RevenueChart } from "@/components/analytics/revenue-chart"
 import { BookingsChart } from "@/components/analytics/bookings-chart"
@@ -10,6 +10,8 @@ import { ServiceChart } from "@/components/analytics/service-chart"
 import { ExportButton } from "@/components/analytics/export-button"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import { AnalyticsSkeleton } from "@/components/ui/skeletons"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState({
@@ -91,16 +93,6 @@ export default function AnalyticsPage() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       {/* Header */}
@@ -153,43 +145,45 @@ export default function AnalyticsPage() {
       </div>
 
       {/* KPI Cards */}
-      {overview && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <KPICard
-            title="Total Revenue"
-            value={overview.totalRevenue}
-            change={overview.growth.revenue}
-            icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
-            format="currency"
-          />
-          <KPICard
-            title="Total Bookings"
-            value={overview.totalBookings}
-            change={overview.growth.bookings}
-            icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
-          />
-          <KPICard
-            title="Active Customers"
-            value={overview.activeCustomers}
-            icon={<Users className="h-4 w-4 text-muted-foreground" />}
-          />
-          <KPICard
-            title="Conversion Rate"
-            value={overview.conversionRate}
-            icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
-            format="percentage"
-          />
-        </div>
-      )}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <KPICard
+          title="Total Revenue"
+          value={overview?.totalRevenue || 0}
+          change={overview?.growth.revenue}
+          icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+          format="currency"
+          isLoading={isLoading}
+        />
+        <KPICard
+          title="Total Bookings"
+          value={overview?.totalBookings || 0}
+          change={overview?.growth.bookings}
+          icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
+          isLoading={isLoading}
+        />
+        <KPICard
+          title="Active Customers"
+          value={overview?.activeCustomers || 0}
+          icon={<Users className="h-4 w-4 text-muted-foreground" />}
+          isLoading={isLoading}
+        />
+        <KPICard
+          title="Conversion Rate"
+          value={overview?.conversionRate || 0}
+          icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
+          format="percentage"
+          isLoading={isLoading}
+        />
+      </div>
 
       {/* Charts */}
       <div className="grid gap-4 md:grid-cols-7">
-        <RevenueChart data={revenueData} />
-        <ServiceChart data={servicesData} />
+        <RevenueChart data={revenueData} isLoading={isLoading} />
+        <ServiceChart data={servicesData} isLoading={isLoading} />
       </div>
 
       <div className="grid gap-4">
-        <BookingsChart data={bookingsData} />
+        <BookingsChart data={bookingsData} isLoading={isLoading} />
       </div>
 
       {/* Popular Service */}

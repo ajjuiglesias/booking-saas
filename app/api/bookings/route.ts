@@ -73,13 +73,119 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+
     try {
         const body = await request.json()
-        // Implementation for manual booking creation will go here
-        // Need to handle customer creation/lookup, service validation, etc.
+        const { serviceId, startTime, customerName, customerEmail, customerPhone, notes, status = "pending" } = body
 
-        return NextResponse.json({ message: "Not implemented yet" }, { status: 501 })
+        // Validate required fields
+        if (!serviceId || !startTime || !customerName || !customerEmail) {
+            return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+        }
+
+        // Get service details
+        const service = await prisma.service.findUnique({
+            where: { id: serviceId },
+            select: {
+                durationMinutes: true,
+                price: true,
+                name: true,
+                businessId: true
+            }
+        })
+
+        if (!service || service.businessId !== session.user.id) {
+            return NextResponse.json({ error: "Service not found" }, { status: 404 })
+        }
+
+        // Calculate end time
+        const start = new Date(startTime)
+        const end = new Date(start.getTime() + service.durationMinutes * 60000)
+
+        // Find or create customer
+        let customer = await prisma.customer.findFirst({
+            where: {
+                businessId: session.user.id,
+                OR: [
+                    { email: customerEmail },
+                    ...(customerPhone ? [{ phone: customerPhone }] : [])
+                ]
+            }
+        })
+
+        if (!customer) {
+            customer = await prisma.customer.create({
+                data: {
+                    businessId: session.user.id,
+                    name: customerName,
+                    email: customerEmail,
+                    phone: customerPhone || null
+                }
+            })
+        } else if (customer.email !== customerEmail) {
+            // Update customer email if found by phone but email is different
+            customer = await prisma.customer.update({
+                where: { id: customer.id },
+                data: {
+                    name: customerName,
+                    email: customerEmail
+                }
+            })
+        }
+
+        // Create booking
+        const booking = await prisma.booking.create({
+            data: {
+                businessId: session.user.id,
+                serviceId,
+                customerId: customer.id,
+                startTime: start,
+                endTime: end,
+                status,
+                customerNotes: notes || null,
+                paymentAmount: service.price,
+                paymentStatus: "pending"
+            },
+            include: {
+                service: true,
+                customer: true
+            }
+        })
+
+        // Send confirmation email
+        try {
+            const business = await prisma.business.findUnique({
+                where: { id: session.user.id },
+                select: { name: true, email: true }
+            })
+
+            if (business) {
+                await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-email`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        type: "booking-confirmation",
+                        to: customerEmail,
+                        booking: {
+                            id: booking.id,
+                            customerName,
+                            serviceName: service.name,
+                            startTime: start.toISOString(),
+                            endTime: end.toISOString(),
+                            businessName: business.name,
+                            businessEmail: business.email
+                        }
+                    })
+                })
+            }
+        } catch (emailError) {
+            console.error("Failed to send confirmation email:", emailError)
+            // Don't fail the booking if email fails
+        }
+
+        return NextResponse.json(booking, { status: 201 })
     } catch (error) {
+        console.error("Booking creation error:", error)
         return NextResponse.json({ error: "Failed to create booking" }, { status: 500 })
     }
 }

@@ -1,6 +1,8 @@
 "use client"
 
+import { useEffect } from "react"
 import { useSearchParams } from "next/navigation"
+import { triggerConfetti } from "@/components/ui/confetti"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle2, Calendar, Clock, MapPin } from "lucide-react"
@@ -9,6 +11,10 @@ import Link from "next/link"
 export default function ConfirmationPage() {
   const searchParams = useSearchParams()
   const bookingId = searchParams.get("id")
+
+  useEffect(() => {
+    triggerConfetti()
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">

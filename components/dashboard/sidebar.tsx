@@ -65,14 +65,14 @@ export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
 
   return (
-    <div className={cn("pb-12 min-h-screen border-r bg-gray-50/40 hidden md:block w-64", className)}>
+    <div className={cn("pb-12 min-h-screen border-r bg-gray-50/40 dark:bg-gray-900 hidden md:block w-64", className)}>
       <div className="space-y-4 py-4">
         <div className="px-3 py-2">
           <div className="mb-2 px-4 flex items-center gap-2">
-             <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+             <div className="h-8 w-8 rounded-lg bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center">
                 <Calendar className="h-5 w-5 text-white" />
              </div>
-            <h2 className="text-lg font-bold tracking-tight">BookingSaaS</h2>
+            <h2 className="text-lg font-bold tracking-tight dark:text-white">BookingSaaS</h2>
           </div>
           <div className="space-y-1 mt-8">
             {sidebarItems.map((item) => (
@@ -81,7 +81,7 @@ export function Sidebar({ className }: SidebarProps) {
                   variant={pathname === item.href ? "secondary" : "ghost"}
                   className={cn(
                     "w-full justify-start gap-2",
-                    pathname === item.href && "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                    pathname === item.href && "bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/50 dark:text-indigo-400 dark:hover:bg-indigo-900/70"
                   )}
                 >
                   <item.icon className="h-4 w-4" />
@@ -95,7 +95,7 @@ export function Sidebar({ className }: SidebarProps) {
       <div className="px-3 py-2 mt-auto absolute bottom-4 w-64">
         <Button
           variant="ghost"
-          className="w-full justify-start gap-2 text-red-500 hover:text-red-600 hover:bg-red-50"
+          className="w-full justify-start gap-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
           onClick={() => signOut({ callbackUrl: "/login" })}
         >
           <LogOut className="h-4 w-4" />

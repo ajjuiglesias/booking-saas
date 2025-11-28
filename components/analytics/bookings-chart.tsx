@@ -2,19 +2,24 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface BookingsChartProps {
   data: Array<{ date: string; confirmed: number; pending: number; cancelled: number }>
+  isLoading?: boolean
 }
 
-export function BookingsChart({ data }: BookingsChartProps) {
+export function BookingsChart({ data, isLoading = false }: BookingsChartProps) {
   return (
     <Card className="col-span-4">
       <CardHeader>
         <CardTitle>Bookings Overview</CardTitle>
       </CardHeader>
       <CardContent className="pl-2">
-        <ResponsiveContainer width="100%" height={350}>
+        {isLoading ? (
+          <Skeleton className="h-[350px] w-full" />
+        ) : (
+          <ResponsiveContainer width="100%" height={350}>
           <AreaChart data={data}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis 
@@ -94,6 +99,7 @@ export function BookingsChart({ data }: BookingsChartProps) {
             />
           </AreaChart>
         </ResponsiveContainer>
+        )}
       </CardContent>
     </Card>
   )
