@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
+import { Loader2, Upload, X, ImageIcon } from "lucide-react"
 import { FormSkeleton } from "@/components/ui/form-skeletons"
+import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -32,6 +33,13 @@ export default function AppearanceForm() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(true)
+  
+  // Logo upload state
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [isRemoving, setIsRemoving] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const form = useForm<AppearanceValues>({
     resolver: zodResolver(appearanceSchema),
@@ -49,6 +57,7 @@ export default function AppearanceForm() {
           form.reset({
             primaryColor: data.primaryColor || "#6366f1",
           })
+          setLogoUrl(data.logoUrl || null)
         }
       } catch (error) {
         toast.error("Failed to load appearance settings")
@@ -82,6 +91,96 @@ export default function AppearanceForm() {
     }
   }
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"]
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type. Only PNG, JPG, JPEG, WebP, and GIF are allowed.")
+      return
+    }
+
+    // Validate file size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("File too large. Maximum size is 2MB.")
+      return
+    }
+
+    // Create preview
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setPreviewUrl(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+
+    // Upload immediately
+    handleUpload(file)
+  }
+
+  const handleUpload = async (file: File) => {
+    setIsUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch("/api/upload/logo", {
+        method: "POST",
+        body: formData
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setLogoUrl(data.logoUrl)
+        setPreviewUrl(null)
+        toast.success("Logo uploaded successfully!")
+        router.refresh()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Failed to upload logo")
+        setPreviewUrl(null)
+      }
+    } catch (error) {
+      toast.error("Failed to upload logo")
+      setPreviewUrl(null)
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    }
+  }
+
+  const handleRemove = async () => {
+    if (!confirm("Are you sure you want to remove your logo?")) return
+
+    setIsRemoving(true)
+    try {
+      const response = await fetch("/api/upload/logo", {
+        method: "DELETE"
+      })
+
+      if (response.ok) {
+        setLogoUrl(null)
+        setPreviewUrl(null)
+        toast.success("Logo removed successfully!")
+        router.refresh()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || "Failed to remove logo")
+      }
+    } catch (error) {
+      toast.error("Failed to remove logo")
+    } finally {
+      setIsRemoving(false)
+    }
+  }
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click()
+  }
+
   if (isFetching) {
     return <FormSkeleton />
   }
@@ -99,6 +198,106 @@ export default function AppearanceForm() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Logo Upload Section */}
+            <div className="space-y-4 pb-6 border-b">
+              <div>
+                <h3 className="text-lg font-medium">Business Logo</h3>
+                <p className="text-sm text-muted-foreground">
+                  Upload your business logo to display on your booking page and in emails.
+                </p>
+              </div>
+              
+              <div className="flex items-start gap-6">
+                {/* Logo Preview */}
+                <div className="flex-shrink-0">
+                  <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 overflow-hidden">
+                    {previewUrl ? (
+                      <div className="relative w-full h-full">
+                        <Image
+                          src={previewUrl}
+                          alt="Logo preview"
+                          fill
+                          className="object-contain p-2"
+                        />
+                      </div>
+                    ) : logoUrl ? (
+                      <div className="relative w-full h-full">
+                        <Image
+                          src={logoUrl}
+                          alt="Business logo"
+                          fill
+                          className="object-contain p-2"
+                        />
+                      </div>
+                    ) : (
+                      <ImageIcon className="w-12 h-12 text-gray-400" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Upload Controls */}
+                <div className="flex-1 space-y-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={triggerFileInput}
+                      disabled={isUploading || isRemoving}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4" />
+                          Upload Logo
+                        </>
+                      )}
+                    </Button>
+
+                    {logoUrl && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleRemove}
+                        disabled={isUploading || isRemoving}
+                        className="gap-2"
+                      >
+                        {isRemoving ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Removing...
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-4 h-4" />
+                            Remove
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <p>• Supported formats: PNG, JPG, JPEG, WebP, GIF</p>
+                    <p>• Maximum size: 2MB</p>
+                    <p>• Recommended: 200x200 pixels or larger</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <FormField
               control={form.control}
               name="primaryColor"

@@ -1,0 +1,2 @@
+# This file ensures the logos directory exists in git
+# Actual logo files are ignored by .gitignore

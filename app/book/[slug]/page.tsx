@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { format, addDays, isSameDay } from "date-fns"
+import Image from "next/image"
 import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -184,8 +185,23 @@ export default function BookingPage() {
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold dark:text-white">{business.name}</h1>
-          <p className="text-muted-foreground">Book an appointment</p>
+          {business.logoUrl ? (
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative w-24 h-24 mb-2">
+                <Image
+                  src={business.logoUrl}
+                  alt={`${business.name} logo`}
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <h1 className="text-2xl font-bold dark:text-white">{business.name}</h1>
+            </div>
+          ) : (
+            <h1 className="text-2xl font-bold dark:text-white">{business.name}</h1>
+          )}
+          <p className="text-muted-foreground mt-2">Book an appointment</p>
         </div>
 
         {/* Progress */}

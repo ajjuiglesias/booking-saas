@@ -65,6 +65,7 @@ export const authConfig: NextAuthConfig = {
                         name: true,
                         email: true,
                         slug: true,
+                        logoUrl: true,
                     }
                 })
 
@@ -73,6 +74,7 @@ export const authConfig: NextAuthConfig = {
                     session.user.name = business.name
                     session.user.email = business.email
                     session.user.slug = business.slug
+                    session.user.logoUrl = business.logoUrl
                 }
             }
             return session

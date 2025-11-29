@@ -1,7 +1,9 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
@@ -63,16 +65,31 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const business = session?.user
 
   return (
     <div className={cn("pb-12 min-h-screen border-r bg-gray-50/40 dark:bg-gray-900 hidden md:block w-64", className)}>
       <div className="space-y-4 py-4">
         <div className="px-3 py-2">
-          <div className="mb-2 px-4 flex items-center gap-2">
-             <div className="h-8 w-8 rounded-lg bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center">
+          <div className="mb-2 px-4 flex items-center gap-3">
+            {business?.logoUrl ? (
+              <div className="relative h-10 w-10 rounded-lg overflow-hidden flex-shrink-0">
+                <Image
+                  src={business.logoUrl}
+                  alt={`${business.name} logo`}
+                  fill
+                  className="object-contain"
+                />
+              </div>
+            ) : (
+              <div className="h-10 w-10 rounded-lg bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center flex-shrink-0">
                 <Calendar className="h-5 w-5 text-white" />
-             </div>
-            <h2 className="text-lg font-bold tracking-tight dark:text-white">BookingSaaS</h2>
+              </div>
+            )}
+            <h2 className="text-lg font-bold tracking-tight dark:text-white truncate">
+              {business?.name || "BookingSaaS"}
+            </h2>
           </div>
           <div className="space-y-1 mt-8">
             {sidebarItems.map((item) => (
