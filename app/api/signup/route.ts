@@ -3,11 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { hashPassword, generateUniqueSlug } from "@/lib/helpers"
 
 export async function POST(request: NextRequest) {
-    console.log("=== SIGNUP API CALLED ===")
     try {
-        console.log("Parsing request body...")
         const body = await request.json()
-        console.log("Request body parsed successfully:", JSON.stringify(body, null, 2))
         const { business, services, availability, bufferMinutes } = body
 
         // Validate required fields
@@ -18,10 +15,24 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Check if email already exists
-        const existingBusiness = await prisma.business.findUnique({
-            where: { email: business.email },
-        })
+        // Parallelize independent operations for better performance
+        const [existingBusiness, slug, hashedPassword] = await Promise.all([
+            // Check if email already exists
+            prisma.business.findUnique({
+                where: { email: business.email },
+                select: { id: true } // Only select id for faster query
+            }),
+            // Generate unique slug
+            generateUniqueSlug(business.name, async (slug) => {
+                const existing = await prisma.business.findUnique({
+                    where: { slug },
+                    select: { id: true }
+                })
+                return !!existing
+            }),
+            // Hash password
+            hashPassword(business.password)
+        ])
 
         if (existingBusiness) {
             return NextResponse.json(
@@ -30,20 +41,8 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Generate unique slug
-        const slug = await generateUniqueSlug(business.name, async (slug) => {
-            const existing = await prisma.business.findUnique({ where: { slug } })
-            return !!existing
-        })
-
-        // Hash password
-        console.log("Hashing password...")
-        const hashedPassword = await hashPassword(business.password)
-        console.log("Password hashed")
-
-        // Create business with services and availability in a transaction
-        console.log("Starting transaction...")
-        const newBusiness = await prisma.$transaction(async (tx: typeof prisma) => {
+        // Create business with services and availability in a single optimized transaction
+        const newBusiness = await prisma.$transaction(async (tx) => {
             // Create business
             const createdBusiness = await tx.business.create({
                 data: {
@@ -52,37 +51,50 @@ export async function POST(request: NextRequest) {
                     email: business.email,
                     password: hashedPassword,
                     category: business.category,
-                    timezone: business.timezone || "America/New_York",
+                    timezone: business.timezone || "Asia/Kolkata", // Default to Indian timezone
                     phone: business.phone || null,
                     bufferMinutes: bufferMinutes || 0,
                 },
+                select: { id: true, slug: true } // Only select needed fields
             })
 
-            // Create services
-            if (services && services.length > 0) {
-                await tx.service.createMany({
-                    data: services.map((service: any) => ({
-                        businessId: createdBusiness.id,
-                        name: service.name,
-                        description: service.description || null,
-                        durationMinutes: service.durationMinutes,
-                        price: service.price,
-                        isActive: true,
-                    })),
-                })
+            // Batch create services and availability in parallel
+            const operations = []
+
+            if (services?.length > 0) {
+                operations.push(
+                    tx.service.createMany({
+                        data: services.map((service: any) => ({
+                            businessId: createdBusiness.id,
+                            name: service.name,
+                            description: service.description || null,
+                            durationMinutes: service.durationMinutes,
+                            price: service.price,
+                            isActive: true,
+                        })),
+                        skipDuplicates: true
+                    })
+                )
             }
 
-            // Create availability
-            if (availability && availability.length > 0) {
-                await tx.availability.createMany({
-                    data: availability.map((avail: any) => ({
-                        businessId: createdBusiness.id,
-                        dayOfWeek: avail.dayOfWeek,
-                        startTime: avail.startTime,
-                        endTime: avail.endTime,
-                        isAvailable: avail.isAvailable,
-                    })),
-                })
+            if (availability?.length > 0) {
+                operations.push(
+                    tx.availability.createMany({
+                        data: availability.map((avail: any) => ({
+                            businessId: createdBusiness.id,
+                            dayOfWeek: avail.dayOfWeek,
+                            startTime: avail.startTime,
+                            endTime: avail.endTime,
+                            isAvailable: avail.isAvailable,
+                        })),
+                        skipDuplicates: true
+                    })
+                )
+            }
+
+            // Execute all operations in parallel
+            if (operations.length > 0) {
+                await Promise.all(operations)
             }
 
             return createdBusiness
@@ -97,9 +109,13 @@ export async function POST(request: NextRequest) {
             businessId: newBusiness.id,
             slug: newBusiness.slug,
             bookingUrl,
+        }, {
+            status: 201,
+            headers: {
+                'Cache-Control': 'no-store' // Prevent caching of signup response
+            }
         })
     } catch (error: any) {
-        console.error("Signup error details:", error)
         // Check for specific Prisma errors
         if (error.code === 'P2002') {
             return NextResponse.json(
@@ -107,8 +123,12 @@ export async function POST(request: NextRequest) {
                 { status: 400 }
             )
         }
+
+        // Log error on server side only (not exposed to client)
+        console.error("Signup error:", error.message)
+
         return NextResponse.json(
-            { error: error.message || "Failed to create account. Please try again." },
+            { error: "Failed to create account. Please try again." },
             { status: 500 }
         )
     }

@@ -3,10 +3,10 @@ import { prisma } from "@/lib/prisma"
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { businessId: string } }
+    { params }: { params: Promise<{ businessId: string }> }
 ) {
     try {
-        const businessId = params.businessId
+        const { businessId } = await params
 
         // Get availability schedule and blocked dates for this business
         const [availability, blockedDates] = await Promise.all([

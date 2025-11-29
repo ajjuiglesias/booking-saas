@@ -3,13 +3,17 @@ import { prisma } from "@/lib/prisma"
 import { addMinutes, format, parseISO, setHours, setMinutes } from "date-fns"
 
 export async function GET(request: NextRequest) {
+    console.log('🔵 TIMESLOTS API CALLED')
     try {
         const { searchParams } = new URL(request.url)
         const businessId = searchParams.get("businessId")
         const serviceId = searchParams.get("serviceId")
         const date = searchParams.get("date")
 
+        console.log('📋 Params:', { businessId, serviceId, date })
+
         if (!businessId || !serviceId || !date) {
+            console.log('❌ Missing parameters')
             return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
         }
 
@@ -29,9 +33,16 @@ export async function GET(request: NextRequest) {
             select: { bufferMinutes: true, slotDuration: true }
         })
 
-        // Parse the selected date and get day of week in UTC to avoid timezone issues
-        const selectedDate = parseISO(date)
-        const dayOfWeek = selectedDate.getUTCDay()
+        // Parse the selected date - handle both "2025-12-01" and ISO datetime strings
+        let selectedDate: Date
+        if (date.includes('T')) {
+            // ISO datetime string - just parse it
+            selectedDate = new Date(date)
+        } else {
+            // Date-only string - append time to avoid timezone issues
+            selectedDate = new Date(date + 'T00:00:00')
+        }
+        const dayOfWeek = selectedDate.getDay()
 
         // Get availability for this day
         const availability = await prisma.availability.findFirst({
@@ -77,14 +88,25 @@ export async function GET(request: NextRequest) {
         const endTime = setMinutes(setHours(selectedDate, endHour), endMinute)
         const now = new Date()
 
+        console.log('=== TIMESLOTS DEBUG ===')
+        console.log('Selected date:', selectedDate.toISOString())
+        console.log('Start time:', currentTime.toISOString())
+        console.log('End time:', endTime.toISOString())
+        console.log('Now:', now.toISOString())
+        console.log('Service duration:', service.durationMinutes)
+
         while (currentTime < endTime) {
             const slotEnd = addMinutes(currentTime, service.durationMinutes)
 
             // Check if slot end time is within business hours
-            if (slotEnd > endTime) break
+            if (slotEnd > endTime) {
+                console.log('Slot end exceeds business hours, breaking')
+                break
+            }
 
             // Check if slot is in the past
             const isPast = currentTime < now
+            console.log(`Slot ${format(currentTime, "h:mm a")}: isPast=${isPast}`)
 
             // Check if slot conflicts with existing bookings
             const isBooked = existingBookings.some(booking => {
@@ -116,6 +138,10 @@ export async function GET(request: NextRequest) {
             const slotDuration = business?.slotDuration || 30
             currentTime = addMinutes(currentTime, slotDuration + (business?.bufferMinutes || 0))
         }
+
+        console.log('Total slots generated:', slots.length)
+        console.log('Available slots:', slots.filter(s => s.available).length)
+        console.log('======================')
 
         return NextResponse.json(slots)
     } catch (error) {

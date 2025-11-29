@@ -29,6 +29,7 @@ export default function AvailabilityPage() {
   const [availability, setAvailability] = useState<AvailabilityDay[]>([])
   const [bufferMinutes, setBufferMinutes] = useState(0)
   const [slotDuration, setSlotDuration] = useState(30) // Default 30 minutes
+  const [maxAdvanceDays, setMaxAdvanceDays] = useState(30) // Default 30 days
   const [blockedDates, setBlockedDates] = useState<Date[]>([])
 
   useEffect(() => {
@@ -55,6 +56,7 @@ export default function AvailabilityPage() {
         setAvailability(fullAvailability)
         setBufferMinutes(data.bufferMinutes || 0)
         setSlotDuration(data.slotDuration || 30)
+        setMaxAdvanceDays(data.maxAdvanceDays || 30)
         
         // Load blocked dates
         if (data.blockedDates && Array.isArray(data.blockedDates)) {
@@ -90,6 +92,7 @@ export default function AvailabilityPage() {
           availability: availability.filter(a => a.isAvailable),
           bufferMinutes,
           slotDuration,
+          maxAdvanceDays,
           blockedDates: blockedDates.map(date => date.toISOString())
         })
       })
@@ -253,6 +256,31 @@ export default function AvailabilityPage() {
               </Select>
               <p className="text-sm text-muted-foreground">
                 Extra time added after each appointment for cleanup/prep.
+              </p>
+            </div>
+
+            {/* Max Advance Booking Days */}
+            <div className="space-y-2">
+              <Label>Maximum Advance Booking</Label>
+              <Select
+                value={maxAdvanceDays.toString()}
+                onValueChange={(val) => setMaxAdvanceDays(parseInt(val))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">1 week</SelectItem>
+                  <SelectItem value="14">2 weeks</SelectItem>
+                  <SelectItem value="30">1 month</SelectItem>
+                  <SelectItem value="60">2 months</SelectItem>
+                  <SelectItem value="90">3 months</SelectItem>
+                  <SelectItem value="180">6 months</SelectItem>
+                  <SelectItem value="365">1 year</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                How far in advance customers can book appointments.
               </p>
             </div>
           </div>

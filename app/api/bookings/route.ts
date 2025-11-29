@@ -102,17 +102,54 @@ export async function POST(request: NextRequest) {
         const start = new Date(startTime)
         const end = new Date(start.getTime() + service.durationMinutes * 60000)
 
-        // Find or create customer
+        // Smart customer matching to prevent duplicates
+        // Priority: 1. Email match, 2. Phone match, 3. Create new
+
+        // First, try to find by email
         let customer = await prisma.customer.findFirst({
             where: {
                 businessId: session.user.id,
-                OR: [
-                    { email: customerEmail },
-                    ...(customerPhone ? [{ phone: customerPhone }] : [])
-                ]
+                email: customerEmail
             }
         })
 
+        if (customer) {
+            // Found by email - update name and phone if changed
+            const needsUpdate =
+                customer.name !== customerName ||
+                customer.phone !== (customerPhone || null)
+
+            if (needsUpdate) {
+                customer = await prisma.customer.update({
+                    where: { id: customer.id },
+                    data: {
+                        name: customerName,
+                        phone: customerPhone || null
+                    }
+                })
+            }
+        } else if (customerPhone) {
+            // Not found by email, try phone (if provided)
+            customer = await prisma.customer.findFirst({
+                where: {
+                    businessId: session.user.id,
+                    phone: customerPhone
+                }
+            })
+
+            if (customer) {
+                // Found by phone - update name and email
+                customer = await prisma.customer.update({
+                    where: { id: customer.id },
+                    data: {
+                        name: customerName,
+                        email: customerEmail
+                    }
+                })
+            }
+        }
+
+        // If still not found, create new customer
         if (!customer) {
             customer = await prisma.customer.create({
                 data: {
@@ -120,15 +157,6 @@ export async function POST(request: NextRequest) {
                     name: customerName,
                     email: customerEmail,
                     phone: customerPhone || null
-                }
-            })
-        } else if (customer.email !== customerEmail) {
-            // Update customer email if found by phone but email is different
-            customer = await prisma.customer.update({
-                where: { id: customer.id },
-                data: {
-                    name: customerName,
-                    email: customerEmail
                 }
             })
         }

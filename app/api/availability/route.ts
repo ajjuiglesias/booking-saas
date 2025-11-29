@@ -16,7 +16,11 @@ export async function GET(request: NextRequest) {
             }),
             prisma.business.findUnique({
                 where: { id: session.user.id },
-                select: { bufferMinutes: true, slotDuration: true }
+                select: {
+                    bufferMinutes: true,
+                    slotDuration: true,
+                    maxAdvanceDays: true
+                }
             }),
             prisma.blockedDate.findMany({
                 where: { businessId: session.user.id },
@@ -28,6 +32,7 @@ export async function GET(request: NextRequest) {
             availability,
             bufferMinutes: business?.bufferMinutes || 0,
             slotDuration: business?.slotDuration || 30,
+            maxAdvanceDays: business?.maxAdvanceDays || 30,
             blockedDates
         })
     } catch (error) {
@@ -43,12 +48,13 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json()
-        const { availability, bufferMinutes, slotDuration } = body
+        const { availability, bufferMinutes, slotDuration, maxAdvanceDays } = body
 
-        // Update buffer time and slot duration
+        // Update buffer time, slot duration, and max advance days
         const updateData: any = {}
         if (typeof bufferMinutes === 'number') updateData.bufferMinutes = bufferMinutes
         if (typeof slotDuration === 'number') updateData.slotDuration = slotDuration
+        if (typeof maxAdvanceDays === 'number') updateData.maxAdvanceDays = maxAdvanceDays
 
         if (Object.keys(updateData).length > 0) {
             await prisma.business.update({

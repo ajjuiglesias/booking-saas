@@ -43,6 +43,7 @@ export function ManualBookingModal({ open, onOpenChange, businessId }: ManualBoo
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [blockedDates, setBlockedDates] = useState<Date[]>([])
   const [availableDays, setAvailableDays] = useState<number[]>([])
+  const [maxAdvanceDays, setMaxAdvanceDays] = useState(30)
 
   const [customerDetails, setCustomerDetails] = useState({
     name: "",
@@ -96,6 +97,11 @@ export function ManualBookingModal({ open, onOpenChange, businessId }: ManualBoo
             .filter((a: any) => a.isAvailable)
             .map((a: any) => a.dayOfWeek)
           setAvailableDays(enabledDays)
+        }
+        
+        // Set max advance days
+        if (data.maxAdvanceDays) {
+          setMaxAdvanceDays(data.maxAdvanceDays)
         }
       }
     } catch (error) {
@@ -222,13 +228,13 @@ export function ManualBookingModal({ open, onOpenChange, businessId }: ManualBoo
                   selected={selectedDate}
                   onSelect={setSelectedDate}
                   disabled={(date) => {
-                    // Disable past dates and dates beyond 30 days
+                    // Disable past dates and dates beyond max advance days
                     const today = new Date()
                     today.setHours(0, 0, 0, 0)
                     const checkDate = new Date(date)
                     checkDate.setHours(0, 0, 0, 0)
                     const maxDate = new Date()
-                    maxDate.setDate(maxDate.getDate() + 30)
+                    maxDate.setDate(maxDate.getDate() + maxAdvanceDays)
                     maxDate.setHours(0, 0, 0, 0)
                     
                     if (checkDate < today || checkDate > maxDate) return true

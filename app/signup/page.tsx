@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { Loader2, Check } from "lucide-react"
+import { Loader2, Check, X, AlertCircle } from "lucide-react"
 import Link from "next/link"
+import { Progress } from "@/components/ui/progress"
 
 const BUSINESS_CATEGORIES = [
   { value: "salon", label: "Salon & Beauty" },
@@ -46,10 +47,18 @@ interface AvailabilityDay {
   isAvailable: boolean
 }
 
+const STORAGE_KEY = "booking_saas_signup_draft"
+
 export default function SignupPage() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingProgress, setLoadingProgress] = useState(0)
+  
+  // Email availability check
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false)
+  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null)
+  const [emailCheckTimeout, setEmailCheckTimeout] = useState<NodeJS.Timeout | null>(null)
 
   // Step 1: Business Info
   const [businessData, setBusinessData] = useState({
@@ -81,6 +90,78 @@ export default function SignupPage() {
 
   // Step 4: Success
   const [bookingUrl, setBookingUrl] = useState("")
+
+  // Load draft from localStorage on mount
+  useEffect(() => {
+    const savedDraft = localStorage.getItem(STORAGE_KEY)
+    if (savedDraft) {
+      try {
+        const draft = JSON.parse(savedDraft)
+        if (draft.businessData) setBusinessData(draft.businessData)
+        if (draft.services) setServices(draft.services)
+        if (draft.availability) setAvailability(draft.availability)
+        if (draft.bufferMinutes !== undefined) setBufferMinutes(draft.bufferMinutes)
+        if (draft.currentStep) setCurrentStep(draft.currentStep)
+        toast.info("Draft restored from previous session")
+      } catch (error) {
+        console.error("Failed to load draft:", error)
+      }
+    }
+  }, [])
+
+  // Save draft to localStorage whenever data changes
+  useEffect(() => {
+    const draft = {
+      businessData,
+      services,
+      availability,
+      bufferMinutes,
+      currentStep
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(draft))
+  }, [businessData, services, availability, bufferMinutes, currentStep])
+
+  // Clear draft on successful signup
+  const clearDraft = () => {
+    localStorage.removeItem(STORAGE_KEY)
+  }
+
+  // Debounced email availability check
+  const checkEmailAvailability = useCallback(async (email: string) => {
+    if (!email || !email.includes('@')) {
+      setEmailAvailable(null)
+      return
+    }
+
+    setIsCheckingEmail(true)
+    try {
+      const response = await fetch(`/api/check-email?email=${encodeURIComponent(email)}`)
+      const data = await response.json()
+      setEmailAvailable(data.available)
+    } catch (error) {
+      console.error("Email check failed:", error)
+    } finally {
+      setIsCheckingEmail(false)
+    }
+  }, [])
+
+  // Handle email input with debouncing
+  const handleEmailChange = (email: string) => {
+    setBusinessData({ ...businessData, email })
+    setEmailAvailable(null)
+    
+    // Clear existing timeout
+    if (emailCheckTimeout) {
+      clearTimeout(emailCheckTimeout)
+    }
+    
+    // Set new timeout for email check
+    const timeout = setTimeout(() => {
+      checkEmailAvailability(email)
+    }, 800) // 800ms debounce
+    
+    setEmailCheckTimeout(timeout)
+  }
 
   const validateStep1 = () => {
     if (!businessData.name || !businessData.email || !businessData.password || !businessData.category) {
@@ -124,6 +205,19 @@ export default function SignupPage() {
 
   const handleSubmit = async () => {
     setIsLoading(true)
+    setLoadingProgress(0)
+    
+    // Simulate progress for better UX
+    const progressInterval = setInterval(() => {
+      setLoadingProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(progressInterval)
+          return 90
+        }
+        return prev + 10
+      })
+    }, 200)
+    
     try {
       const response = await fetch("/api/signup", {
         method: "POST",
@@ -145,13 +239,17 @@ export default function SignupPage() {
         throw new Error(data.error || "Failed to create account")
       }
 
+      setLoadingProgress(100)
       setBookingUrl(data.bookingUrl)
       setCurrentStep(4)
+      clearDraft() // Clear draft on success
       toast.success("Account created successfully!")
     } catch (error: any) {
+      clearInterval(progressInterval)
       toast.error(error.message || "Something went wrong")
     } finally {
       setIsLoading(false)
+      setLoadingProgress(0)
     }
   }
 
@@ -245,13 +343,42 @@ export default function SignupPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={businessData.email}
-                  onChange={(e) => setBusinessData({ ...businessData, email: e.target.value })}
-                  placeholder="you@business.com"
-                />
+                <div className="relative">
+                  <Input
+                    id="email"
+                    type="email"
+                    value={businessData.email}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    placeholder="you@business.com"
+                    className={
+                      emailAvailable === false ? "border-red-500 pr-10" : 
+                      emailAvailable === true ? "border-green-500 pr-10" : "pr-10"
+                    }
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {isCheckingEmail && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                    {!isCheckingEmail && emailAvailable === true && (
+                      <Check className="h-4 w-4 text-green-500" />
+                    )}
+                    {!isCheckingEmail && emailAvailable === false && (
+                      <X className="h-4 w-4 text-red-500" />
+                    )}
+                  </div>
+                </div>
+                {emailAvailable === false && (
+                  <p className="text-sm text-red-500 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Email already registered
+                  </p>
+                )}
+                {emailAvailable === true && (
+                  <p className="text-sm text-green-500 flex items-center gap-1">
+                    <Check className="h-3 w-3" />
+                    Email available
+                  </p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -479,18 +606,29 @@ export default function SignupPage() {
                 </Select>
               </div>
             </CardContent>
-            <div className="p-6 pt-0 flex justify-between">
-              <Button variant="outline" onClick={handleBack}>Back</Button>
-              <Button onClick={handleSubmit} disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating Account...
-                  </>
-                ) : (
-                  "Create Account"
-                )}
-              </Button>
+            <div className="p-6 pt-0">
+              {isLoading && (
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                    <span>Creating your account...</span>
+                    <span>{loadingProgress}%</span>
+                  </div>
+                  <Progress value={loadingProgress} className="h-2" />
+                </div>
+              )}
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={handleBack} disabled={isLoading}>Back</Button>
+                <Button onClick={handleSubmit} disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating Account...
+                    </>
+                  ) : (
+                    "Create Account"
+                  )}
+                </Button>
+              </div>
             </div>
           </Card>
         )}

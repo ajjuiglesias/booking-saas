@@ -2,7 +2,7 @@ import { Metadata } from "next"
 import { DashboardClient } from "@/components/dashboard/dashboard-client"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { startOfMonth, endOfMonth, startOfDay, endOfDay, subMonths, format } from "date-fns"
+import { startOfMonth, endOfMonth, startOfDay, endOfDay, subMonths, format, addDays } from "date-fns"
 
 export const metadata: Metadata = {
   title: "Dashboard - BookingSaaS",
@@ -12,9 +12,13 @@ export const metadata: Metadata = {
 export default async function DashboardPage() {
   const session = await auth()
   
-  // Fetch business data
+  if (!session?.user?.email) {
+    return <div>Not authenticated</div>
+  }
+  
+  // Fetch business data using email to ensure correct business
   const business = await prisma.business.findUnique({
-    where: { email: session?.user?.email! },
+    where: { email: session.user.email },
     select: { id: true, slug: true, name: true }
   })
 
@@ -30,15 +34,20 @@ export default async function DashboardPage() {
   const monthEnd = endOfMonth(now)
   const lastMonthStart = startOfMonth(subMonths(now, 1))
   const lastMonthEnd = endOfMonth(subMonths(now, 1))
+  
+  // For today's bookings, we need to account for timezone
+  // Get bookings for today and tomorrow to catch all timezone variations
   const todayStart = startOfDay(now)
-  const todayEnd = endOfDay(now)
+  const tomorrowEnd = endOfDay(addDays(now, 1))
 
   // Fetch real stats from database
   const [
     totalBookingsThisMonth,
     totalBookingsLastMonth,
+    totalBookingsAllTime,
     revenueThisMonth,
     revenueLastMonth,
+    revenueAllTime,
     activeCustomers,
     todaysBookings
   ] = await Promise.all([
@@ -54,6 +63,12 @@ export default async function DashboardPage() {
       where: {
         businessId: business.id,
         startTime: { gte: lastMonthStart, lte: lastMonthEnd }
+      }
+    }),
+    // Total bookings all time
+    prisma.booking.count({
+      where: {
+        businessId: business.id
       }
     }),
     // Revenue this month
@@ -74,6 +89,14 @@ export default async function DashboardPage() {
       },
       _sum: { paymentAmount: true }
     }),
+    // Revenue all time
+    prisma.booking.aggregate({
+      where: {
+        businessId: business.id,
+        status: { in: ['confirmed', 'completed'] }
+      },
+      _sum: { paymentAmount: true }
+    }),
     // Active customers (unique customers with bookings)
     prisma.customer.count({
       where: {
@@ -81,29 +104,35 @@ export default async function DashboardPage() {
         bookings: { some: {} }
       }
     }),
-    // Today's bookings
+    // Today's bookings (expanded range to catch timezone issues)
     prisma.booking.findMany({
       where: {
         businessId: business.id,
-        startTime: { gte: todayStart, lte: todayEnd }
+        startTime: { gte: todayStart, lte: tomorrowEnd }
       },
       include: {
         customer: true,
         service: true
       },
       orderBy: { startTime: 'asc' },
-      take: 5
+      take: 10
     })
   ])
 
   // Calculate growth percentage
   const bookingGrowth = totalBookingsLastMonth > 0 
     ? ((totalBookingsThisMonth - totalBookingsLastMonth) / totalBookingsLastMonth) * 100 
-    : 0
+    : totalBookingsThisMonth > 0 ? 100 : 0
+
+  // Use all-time stats if current month is empty
+  const displayBookings = totalBookingsThisMonth > 0 ? totalBookingsThisMonth : totalBookingsAllTime
+  const displayRevenue = Number(revenueThisMonth._sum.paymentAmount || 0) > 0 
+    ? Number(revenueThisMonth._sum.paymentAmount || 0)
+    : Number(revenueAllTime._sum.paymentAmount || 0)
 
   const stats = {
-    totalBookings: totalBookingsThisMonth,
-    revenue: Number(revenueThisMonth._sum.paymentAmount || 0),
+    totalBookings: displayBookings,
+    revenue: displayRevenue,
     activeCustomers: activeCustomers,
     growth: Math.round(bookingGrowth * 10) / 10
   }

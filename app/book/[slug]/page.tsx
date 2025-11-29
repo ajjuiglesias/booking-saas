@@ -260,11 +260,14 @@ export default function BookingPage() {
                         today.setHours(0, 0, 0, 0)
                         const checkDate = new Date(date)
                         checkDate.setHours(0, 0, 0, 0)
+                        
+                        // Use business maxAdvanceDays or default to 30 days
+                        const maxDays = business?.maxAdvanceDays || 30
                         const maxDate = new Date()
-                        maxDate.setDate(maxDate.getDate() + 30)
+                        maxDate.setDate(maxDate.getDate() + maxDays)
                         maxDate.setHours(0, 0, 0, 0)
                         
-                        // Disable past dates and dates beyond 30 days
+                        // Disable past dates and dates beyond max advance days
                         if (checkDate < today || checkDate > maxDate) return true
                         
                         // Disable if this day of week is not available
