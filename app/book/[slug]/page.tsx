@@ -130,6 +130,11 @@ export default function BookingPage() {
           if (response.ok) {
             const data = await response.json()
             setTimeSlots(data)
+            
+            // If no slots available and this is today, try to find next available date
+            if (data.length === 0 && isSameDay(selectedDate, new Date())) {
+              findNextAvailableDate()
+            }
           }
         } catch (error) {
           toast.error("Failed to load time slots")
@@ -140,6 +145,50 @@ export default function BookingPage() {
       fetchSlots()
     }
   }, [selectedDate, selectedService, business])
+
+  // Find next available date with slots
+  const findNextAvailableDate = async () => {
+    if (!selectedService || !business) return
+    
+    const maxDays = business.maxAdvanceDays || 30
+    let currentDate = addDays(new Date(), 1) // Start from tomorrow
+    
+    for (let i = 0; i < maxDays; i++) {
+      // Check if date is blocked
+      const isBlocked = blockedDates.some(blocked => 
+        isSameDay(blocked, currentDate)
+      )
+      
+      // Check if day of week is available
+      const dayOfWeek = currentDate.getDay()
+      const isDayAvailable = availableDays.includes(dayOfWeek)
+      
+      if (!isBlocked && isDayAvailable) {
+        // Check if this date has slots
+        try {
+          const params = new URLSearchParams({
+            businessId: business.id,
+            serviceId: selectedService.id,
+            date: currentDate.toISOString(),
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          })
+          const response = await fetch(`/api/timeslots?${params}`)
+          if (response.ok) {
+            const slots = await response.json()
+            if (slots.length > 0) {
+              // Found a date with available slots!
+              setSelectedDate(currentDate)
+              return
+            }
+          }
+        } catch (error) {
+          console.error("Error checking slots for date:", error)
+        }
+      }
+      
+      currentDate = addDays(currentDate, 1)
+    }
+  }
 
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -162,7 +211,7 @@ export default function BookingPage() {
       if (response.ok) {
         const data = await response.json()
         // Don't set isSubmitting to false - keep loader showing during redirect
-        router.push(`/book/${slug}/confirmation?id=${data.id}`)
+        router.push(`/booking-confirmation/${data.id}`)
       } else {
         throw new Error("Booking failed")
       }

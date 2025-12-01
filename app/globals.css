@@ -120,3 +120,58 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Print Styles for Booking Receipts */
+@media print {
+  /* Hide elements that shouldn't be printed */
+  .no-print,
+  nav,
+  header,
+  footer,
+  button,
+  .sidebar {
+    display: none !important;
+  }
+
+  /* Show print-only elements */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Optimize page layout for printing */
+  @page {
+    margin: 1cm;
+    size: A4;
+  }
+
+  /* Reset background colors for printing */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Ensure QR codes print clearly */
+  svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Prevent page breaks inside important elements */
+  .card,
+  .booking-details {
+    page-break-inside: avoid;
+  }
+
+  /* Optimize font sizes for print */
+  body {
+    font-size: 12pt;
+  }
+
+  h1 {
+    font-size: 24pt;
+  }
+
+  h2 {
+    font-size: 18pt;
+  }
+}

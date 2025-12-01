@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { updateCustomerLTV } from "@/lib/customer-ltv"
 
 /**
  * Auto-complete past bookings
@@ -9,11 +10,24 @@ export async function autoCompletePastBookings() {
         const now = new Date()
 
         // Find all confirmed bookings that have ended
-        const result = await prisma.booking.updateMany({
+        const completedBookings = await prisma.booking.findMany({
             where: {
                 status: "confirmed",
                 endTime: {
                     lt: now,
+                },
+            },
+            select: {
+                id: true,
+                customerId: true,
+            },
+        })
+
+        // Update booking status
+        await prisma.booking.updateMany({
+            where: {
+                id: {
+                    in: completedBookings.map(b => b.id),
                 },
             },
             data: {
@@ -21,8 +35,14 @@ export async function autoCompletePastBookings() {
             },
         })
 
-        console.log(`Auto-completed ${result.count} past bookings`)
-        return { success: true, count: result.count }
+        // Update customer LTV for each completed booking
+        const uniqueCustomerIds = [...new Set(completedBookings.map(b => b.customerId))]
+        await Promise.all(
+            uniqueCustomerIds.map(customerId => updateCustomerLTV(customerId))
+        )
+
+        console.log(`Auto-completed ${completedBookings.length} past bookings and updated ${uniqueCustomerIds.length} customer LTV records`)
+        return { success: true, count: completedBookings.length }
     } catch (error) {
         console.error("Error auto-completing bookings:", error)
         return { success: false, error }

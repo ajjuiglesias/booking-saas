@@ -51,6 +51,7 @@ model Business {
   availability Availability[]
   bookings    Booking[]
   customers   Customer[]
+  customerTags CustomerTag[]
   staff       Staff[]
 }
 
@@ -66,6 +67,7 @@ model Service {
   price       Decimal  @db.Decimal(10, 2)
   isActive    Boolean  @default(true)
   color       String?  @default("#6366f1")
+  maxGroupSize Int     @default(1) // Maximum number of attendees per booking
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -120,12 +122,37 @@ model Customer {
   notes      String?
   noShowCount Int     @default(0)
   
+  // Customer Management Fields
+  tags       String[] @default([])
+  segment    String?  // "vip", "regular", "new", "at_risk", "lost"
+  totalSpent Decimal  @default(0) @db.Decimal(10, 2)
+  totalBookings Int   @default(0)
+  lastBookingDate DateTime?
+  source     String   @default("manual") // "manual", "csv_import", "online_booking"
+  
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   
   bookings   Booking[]
   
   @@unique([businessId, phone])
+  @@index([businessId])
+  @@index([businessId, segment])
+  @@index([businessId, totalSpent])
+}
+
+// Customer Tag Model (for predefined tags)
+model CustomerTag {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  name       String
+  color      String   @default("#6366f1")
+  
+  createdAt  DateTime @default(now())
+  
+  @@unique([businessId, name])
   @@index([businessId])
 }
 
@@ -151,6 +178,9 @@ model Booking {
   
   customerNotes String?
   internalNotes String?
+  
+  // Group booking
+  attendees     Int      @default(1) // Number of people attending
   
   // Cancellation tracking
   cancellationReason String?

@@ -131,7 +131,21 @@ export default function BookingHistoryPage() {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <TableSkeleton rows={5} />
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Service</TableHead>
+                      <TableHead>Date & Time</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableSkeleton rows={5} />
+                  </TableBody>
+                </Table>
               ) : bookings.length === 0 ? (
                 <EmptyState
                   icon={Calendar}

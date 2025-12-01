@@ -25,6 +25,7 @@ interface TimeSlot {
   time: string
   datetime: string
   available: boolean
+  status?: 'available' | 'past' | 'booked'
 }
 
 interface ManualBookingModalProps {
@@ -268,19 +269,33 @@ export function ManualBookingModal({ open, onOpenChange, businessId }: ManualBoo
                 <p className="text-sm text-muted-foreground py-4">No available time slots for this date</p>
               ) : (
                 <div className="grid grid-cols-4 gap-2 max-h-[200px] overflow-y-auto p-2 border rounded-md">
-                  {timeSlots.map((slot) => (
-                    <Button
-                      key={slot.datetime}
-                      type="button"
-                      variant={selectedTime === slot.datetime ? "default" : "outline"}
-                      size="sm"
-                      disabled={!slot.available}
-                      onClick={() => setSelectedTime(slot.datetime)}
-                      className="text-xs"
-                    >
-                      {slot.time}
-                    </Button>
-                  ))}
+                  {timeSlots.map((slot) => {
+                    const isSelected = selectedTime === slot.datetime
+                    
+                    // Determine button styling based on status (same as public booking page)
+                    let buttonClass = "text-xs"
+                    if (slot.status === 'past') {
+                      buttonClass += " bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800"
+                    } else if (slot.status === 'booked') {
+                      buttonClass += " bg-red-50 text-red-600 border-red-200 cursor-not-allowed dark:bg-red-950 dark:text-red-400 dark:border-red-900"
+                    } else if (isSelected) {
+                      buttonClass += " bg-primary text-primary-foreground"
+                    }
+                    
+                    return (
+                      <Button
+                        key={slot.datetime}
+                        type="button"
+                        variant={isSelected ? "default" : "outline"}
+                        size="sm"
+                        disabled={!slot.available}
+                        onClick={() => setSelectedTime(slot.datetime)}
+                        className={buttonClass}
+                      >
+                        {slot.time}
+                      </Button>
+                    )
+                  })}
                 </div>
               )}
             </div>
