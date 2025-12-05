@@ -6,7 +6,7 @@ import { sendBookingConfirmation, sendBookingNotification } from "@/lib/email"
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { businessId, serviceId, customer, startTime, timezone } = body
+        const { businessId, serviceId, customer, startTime, timezone, paymentMethod, attendees } = body
 
         // 1. Validate inputs
         if (!businessId || !serviceId || !customer || !startTime) {
@@ -60,6 +60,8 @@ export async function POST(request: NextRequest) {
         }
 
         // 5. Create booking
+        // For online payments: status = "pending_payment" until payment succeeds
+        // For cash payments: status = "confirmed" immediately
         const booking = await prisma.booking.create({
             data: {
                 businessId,
@@ -67,10 +69,12 @@ export async function POST(request: NextRequest) {
                 customerId: customerRecord.id,
                 startTime: start,
                 endTime: end,
-                status: "confirmed",
+                status: paymentMethod === "online" ? "pending_payment" : "confirmed",
                 customerNotes: customer.notes,
                 paymentStatus: "pending",
-                paymentAmount: service.price
+                paymentAmount: service.price,
+                paymentMethod: paymentMethod || "cash", // online or cash
+                attendees: attendees || 1, // Support group bookings
             },
             include: {
                 customer: true,
@@ -93,7 +97,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             success: true,
             id: booking.id,
-            message: "Booking confirmed"
+            message: "Booking confirmed",
+            booking: booking
         })
 
     } catch (error) {

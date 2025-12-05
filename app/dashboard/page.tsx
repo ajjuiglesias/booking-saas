@@ -9,6 +9,10 @@ export const metadata: Metadata = {
   description: "Overview of your business performance",
 }
 
+// Force dynamic rendering to always show fresh data
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function DashboardPage() {
   const session = await auth()
   
@@ -104,11 +108,15 @@ export default async function DashboardPage() {
         bookings: { some: {} }
       }
     }),
-    // Today's bookings (expanded range to catch timezone issues)
+    // Today's upcoming bookings (only show remaining bookings for TODAY)
     prisma.booking.findMany({
       where: {
         businessId: business.id,
-        startTime: { gte: todayStart, lte: tomorrowEnd }
+        startTime: { 
+          gte: now, // From now onwards
+          lte: endOfDay(now) // Until end of today (not tomorrow or future days)
+        },
+        status: { in: ['confirmed', 'checked_in', 'pending_payment'] } // Only active bookings
       },
       include: {
         customer: true,

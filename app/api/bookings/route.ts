@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
         // Add status filter
         if (statusFilter === "upcoming") {
-            where.status = { in: ["confirmed", "pending"] }
+            where.status = { in: ["confirmed", "checked_in", "pending"] }
             where.startTime = { gte: now }
         } else if (statusFilter === "completed") {
             where.status = "completed"
@@ -47,14 +47,29 @@ export async function GET(request: NextRequest) {
                 gte: now,
                 lte: parseISO(end)
             }
-            where.status = { in: ["confirmed", "pending"] }
+            where.status = { in: ["confirmed", "checked_in", "pending"] }
         }
 
         const bookings = await prisma.booking.findMany({
             where,
             include: {
-                customer: true,
-                service: true
+                customer: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                    }
+                },
+                service: {
+                    select: {
+                        id: true,
+                        name: true,
+                        color: true,
+                        price: true,
+                        durationMinutes: true,
+                    }
+                },
             },
             orderBy: {
                 startTime: "asc"
@@ -171,8 +186,10 @@ export async function POST(request: NextRequest) {
                 endTime: end,
                 status,
                 customerNotes: notes || null,
+                internalNotes: body.internalNotes || null, // Staff-only notes
                 paymentAmount: service.price,
-                paymentStatus: "pending"
+                paymentStatus: "pending",
+                paymentMethod: body.paymentMethod || "cash", // Default to cash for manual bookings
             },
             include: {
                 service: true,
@@ -180,35 +197,39 @@ export async function POST(request: NextRequest) {
             }
         })
 
-        // Send confirmation email
-        try {
-            const business = await prisma.business.findUnique({
-                where: { id: session.user.id },
-                select: { name: true, email: true }
-            })
+        // Send confirmation email (only if sendConfirmation is true)
+        const sendConfirmation = body.sendConfirmation !== false // Default to true if not specified
 
-            if (business) {
-                await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-email`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        type: "booking-confirmation",
-                        to: customerEmail,
-                        booking: {
-                            id: booking.id,
-                            customerName,
-                            serviceName: service.name,
-                            startTime: start.toISOString(),
-                            endTime: end.toISOString(),
-                            businessName: business.name,
-                            businessEmail: business.email
-                        }
-                    })
+        if (sendConfirmation) {
+            try {
+                const business = await prisma.business.findUnique({
+                    where: { id: session.user.id },
+                    select: { name: true, email: true }
                 })
+
+                if (business) {
+                    await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-email`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            type: "booking-confirmation",
+                            to: customerEmail,
+                            booking: {
+                                id: booking.id,
+                                customerName,
+                                serviceName: service.name,
+                                startTime: start.toISOString(),
+                                endTime: end.toISOString(),
+                                businessName: business.name,
+                                businessEmail: business.email
+                            }
+                        })
+                    })
+                }
+            } catch (emailError) {
+                console.error("Failed to send confirmation email:", emailError)
+                // Don't fail the booking if email fails
             }
-        } catch (emailError) {
-            console.error("Failed to send confirmation email:", emailError)
-            // Don't fail the booking if email fails
         }
 
         return NextResponse.json(booking, { status: 201 })

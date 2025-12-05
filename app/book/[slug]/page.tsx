@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { format, addDays, isSameDay } from "date-fns"
 import Image from "next/image"
+import Script from "next/script"
 import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -39,11 +40,13 @@ export default function BookingPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [business, setBusiness] = useState<any>(null)
   const [services, setServices] = useState<Service[]>([])
+  const [paymentSettings, setPaymentSettings] = useState<any>(null)
   
   // Selection state
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<'online' | 'cash'>('cash')
   const [customerDetails, setCustomerDetails] = useState({
     name: "",
     email: "",
@@ -112,6 +115,28 @@ export default function BookingPage() {
         }
       }
       fetchAvailabilityData()
+    }
+  }, [business])
+
+  // Fetch payment settings when business is loaded
+  useEffect(() => {
+    if (business) {
+      const fetchPaymentSettings = async () => {
+        try {
+          console.log('Fetching payment settings for business:', business.id)
+          const response = await fetch(`/api/public/payment-settings/${business.id}`)
+          if (response.ok) {
+            const data = await response.json()
+            console.log('Payment settings loaded:', data)
+            setPaymentSettings(data)
+          } else {
+            console.error('Failed to fetch payment settings:', response.status)
+          }
+        } catch (error) {
+          console.error("Failed to load payment settings:", error)
+        }
+      }
+      fetchPaymentSettings()
     }
   }, [business])
 
@@ -191,34 +216,111 @@ export default function BookingPage() {
   }
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showRazorpay, setShowRazorpay] = useState(false)
+  const [razorpayOrder, setRazorpayOrder] = useState<any>(null)
+  const [createdBookingId, setCreatedBookingId] = useState<string | null>(null)
 
   const handleBooking = async () => {
     setIsSubmitting(true)
     try {
+      // Step 1: Create the booking first
       const response = await fetch("/api/public/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           businessId: business.id,
           serviceId: selectedService?.id,
-          customerId: "new", // Logic to handle new vs existing
+          customerId: "new",
           customer: customerDetails,
-          startTime: selectedTime, // This needs to be the full ISO string from the slot
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          startTime: selectedTime,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          paymentMethod: paymentMethod,
         })
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        // Don't set isSubmitting to false - keep loader showing during redirect
-        router.push(`/booking-confirmation/${data.id}`)
-      } else {
+      if (!response.ok) {
         throw new Error("Booking failed")
+      }
+
+      const data = await response.json()
+      setCreatedBookingId(data.id)
+
+      // Step 2: If online payment, create Razorpay order
+      if (paymentMethod === 'online') {
+        const orderResponse = await fetch("/api/payments/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bookingId: data.id,
+            amount: selectedService?.price || 0,
+          })
+        })
+
+        if (!orderResponse.ok) {
+          const errorData = await orderResponse.json()
+          
+          // Show user-friendly error message
+          if (errorData.error?.includes("Payment settings not configured") || 
+              errorData.error?.includes("Razorpay credentials") ||
+              errorData.error?.includes("Online payments not enabled")) {
+            toast.error(
+              "Payment Setup Required",
+              {
+                description: errorData.error,
+                duration: 8000,
+              }
+            )
+          } else {
+            toast.error("Failed to create payment order")
+          }
+          
+          setIsSubmitting(false)
+          return
+        }
+
+        const orderData = await orderResponse.json()
+        setRazorpayOrder(orderData)
+        setShowRazorpay(true)
+      } else {
+        // Cash payment - redirect directly to confirmation
+        router.push(`/booking-confirmation/${data.id}`)
       }
     } catch (error) {
       toast.error("Failed to create booking")
       setIsSubmitting(false)
     }
+  }
+
+  const handlePaymentSuccess = async (response: any) => {
+    try {
+      // Verify payment
+      const verifyResponse = await fetch("/api/payments/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          razorpay_order_id: response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature: response.razorpay_signature,
+          bookingId: createdBookingId,
+        })
+      })
+
+      if (verifyResponse.ok) {
+        toast.success("Payment successful!")
+        router.push(`/booking-confirmation/${createdBookingId}`)
+      } else {
+        throw new Error("Payment verification failed")
+      }
+    } catch (error) {
+      toast.error("Payment verification failed")
+      setIsSubmitting(false)
+    }
+  }
+
+  const handlePaymentFailure = (error: any) => {
+    toast.error("Payment failed. Please try again.")
+    setIsSubmitting(false)
+    setShowRazorpay(false)
   }
 
   if (isLoading) {
@@ -447,6 +549,56 @@ export default function BookingPage() {
                   />
                 </div>
 
+                {/* Payment Method Selection */}
+                <div className="space-y-3 pt-4 border-t">
+                  <Label>Payment Method</Label>
+                  {console.log('Rendering payment options. paymentSettings:', paymentSettings, 'razorpayEnabled:', paymentSettings?.razorpayEnabled)}
+                  <div className={cn(
+                    "grid gap-3",
+                    paymentSettings?.razorpayEnabled ? "grid-cols-2" : "grid-cols-1"
+                  )}>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('cash')}
+                      className={cn(
+                        "flex items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all",
+                        paymentMethod === 'cash'
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-gray-200 hover:border-gray-300"
+                      )}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      <span className="font-medium">Pay Cash</span>
+                    </button>
+                    
+                    {/* Only show Pay Online if Razorpay is enabled */}
+                    {paymentSettings?.razorpayEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('online')}
+                        className={cn(
+                          "flex items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all",
+                          paymentMethod === 'online'
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "border-gray-200 hover:border-gray-300"
+                        )}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                        <span className="font-medium">Pay Online</span>
+                      </button>
+                    )}
+                  </div>
+                  {paymentMethod === 'online' && (
+                    <p className="text-sm text-muted-foreground">
+                      You'll be redirected to secure payment gateway
+                    </p>
+                  )}
+                </div>
+
                 <div className="bg-gray-50 p-4 rounded-lg mt-6">
                   <h4 className="font-medium mb-2">Booking Summary</h4>
                   <div className="text-sm space-y-1 text-gray-600">
@@ -492,6 +644,49 @@ export default function BookingPage() {
           )}
         </Card>
       </div>
+
+      {/* Razorpay Checkout Script */}
+      {showRazorpay && razorpayOrder && (
+        <Script
+          src="https://checkout.razorpay.com/v1/checkout.js"
+          onLoad={() => {
+            const options = {
+              key: razorpayOrder.keyId,
+              amount: razorpayOrder.amount,
+              currency: razorpayOrder.currency,
+              name: business.name,
+              description: `Booking for ${selectedService?.name}`,
+              order_id: razorpayOrder.orderId,
+              prefill: {
+                name: customerDetails.name,
+                email: customerDetails.email,
+                contact: customerDetails.phone,
+              },
+              theme: {
+                color: business.primaryColor || "#6366f1",
+              },
+              handler: function (response: any) {
+                handlePaymentSuccess(response)
+              },
+              modal: {
+                ondismiss: function () {
+                  handlePaymentFailure({ error: "Payment cancelled by user" })
+                },
+              },
+            }
+
+            const razorpay = new (window as any).Razorpay(options)
+            razorpay.on("payment.failed", function (response: any) {
+              handlePaymentFailure(response.error)
+            })
+            razorpay.open()
+          }}
+          onError={() => {
+            toast.error("Failed to load payment gateway")
+            handlePaymentFailure({ error: "Payment gateway failed to load" })
+          }}
+        />
+      )}
     </div>
   )
 }

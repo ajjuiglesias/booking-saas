@@ -53,6 +53,7 @@ model Business {
   customers   Customer[]
   customerTags CustomerTag[]
   staff       Staff[]
+  paymentSettings PaymentSettings?
 }
 
 // Service Model
@@ -174,7 +175,7 @@ model Booking {
   startTime  DateTime
   endTime    DateTime
   
-  status     String   @default("confirmed") // confirmed, cancelled, completed, no_show
+  status     String   @default("confirmed") // confirmed, checked_in, cancelled, completed, no_show
   
   customerNotes String?
   internalNotes String?
@@ -193,9 +194,22 @@ model Booking {
   rescheduledAt      DateTime?
   
   // Payment
-  paymentStatus String @default("pending") // pending, paid, refunded
+  paymentStatus String @default("pending") // pending, paid, failed, refunded
   paymentAmount Decimal? @db.Decimal(10, 2)
   paymentMethod String? // cash, card, online
+  
+  // Razorpay payment tracking
+  razorpayOrderId    String?  // Razorpay order ID
+  razorpayPaymentId  String?  // Razorpay payment ID
+  razorpaySignature  String?  // Payment signature for verification
+  paidAt             DateTime? // When payment was completed
+  refundId           String?  // Razorpay refund ID if refunded
+  refundedAt         DateTime? // When refund was processed
+  refundAmount       Decimal? @db.Decimal(10, 2)
+  
+  // Check-in tracking
+  checkedInAt    DateTime? // When customer checked in
+  checkInMethod  String?   // "qr_scan", "manual", "auto"
   
   // Reminders sent
   reminder24hSent Boolean @default(false)
@@ -240,4 +254,32 @@ model StaffService {
   service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   
   @@unique([staffId, serviceId])
+}
+
+// Payment Settings Model
+model PaymentSettings {
+  id                String   @id @default(cuid())
+  businessId        String   @unique
+  business          Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  // Razorpay credentials
+  razorpayEnabled   Boolean  @default(false)
+  razorpayKeyId     String?  // Public key
+  razorpayKeySecret String?  // Secret key (encrypted)
+  razorpayMode      String   @default("test") // test or live
+  
+  // Payment options
+  acceptOnlinePayment Boolean @default(true)
+  acceptCashPayment   Boolean @default(true)
+  requireAdvancePayment Boolean @default(false)
+  advancePaymentPercent Int   @default(100) // 100% = full payment, 50% = half
+  
+  // Refund policy
+  allowRefunds      Boolean  @default(true)
+  refundPercentage  Int      @default(100) // % of payment to refund (0-100)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([businessId])
 }

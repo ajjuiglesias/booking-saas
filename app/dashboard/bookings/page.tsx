@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table"
 import { CancelBookingButton } from "@/components/bookings/cancel-booking-button"
 import { MarkNoShowButton } from "@/components/bookings/mark-noshow-button"
+import { MarkPaidButton } from "@/components/bookings/mark-paid-button"
 import { TableSkeleton } from "@/components/ui/skeletons"
 import { EmptyState } from "@/components/ui/empty-state"
 
@@ -35,6 +36,9 @@ interface Booking {
     color: string | null
   }
   paymentAmount: any
+  paymentStatus: string
+  paymentMethod: string | null
+  checkedInAt: string | null
 }
 
 export default function BookingHistoryPage() {
@@ -75,23 +79,37 @@ export default function BookingHistoryPage() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      confirmed: "default",
+      confirmed: "default", // Blue - confirmed but not checked in yet
+      checked_in: "secondary", // Gray - customer has arrived
       pending: "outline",
-      completed: "secondary",
-      cancelled: "destructive",
-      no_show: "destructive",
+      pending_payment: "outline", // Outline - waiting for payment
+      completed: "secondary", // Gray - service completed
+      cancelled: "destructive", // Red - cancelled
+      no_show: "destructive", // Red - no show
     }
 
     const labels: Record<string, string> = {
-      confirmed: "CONFIRMED",
-      pending: "PENDING",
-      completed: "COMPLETED",
-      cancelled: "CANCELLED",
-      no_show: "NO-SHOW",
+      confirmed: "Confirmed",
+      checked_in: "✓ Checked In",
+      pending: "Pending",
+      pending_payment: "⏳ Awaiting Payment",
+      completed: "Completed",
+      cancelled: "Cancelled",
+      no_show: "No-Show",
+    }
+
+    // Custom styling for specific statuses
+    const customClass: Record<string, string> = {
+      checked_in: "bg-blue-100 text-blue-800 border-blue-300",
+      pending_payment: "bg-yellow-100 text-yellow-800 border-yellow-300",
+      confirmed: "bg-green-100 text-green-800 border-green-300",
     }
 
     return (
-      <Badge variant={variants[status] || "outline"}>
+      <Badge 
+        variant={variants[status] || "outline"}
+        className={customClass[status] || ""}
+      >
         {labels[status] || status.toUpperCase()}
       </Badge>
     )
@@ -170,6 +188,7 @@ export default function BookingHistoryPage() {
                       <TableHead>Service</TableHead>
                       <TableHead>Date & Time</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Payment</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -207,27 +226,56 @@ export default function BookingHistoryPage() {
                         </TableCell>
                         <TableCell>{getStatusBadge(booking.status)}</TableCell>
                         <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <Badge 
+                              variant={
+                                booking.paymentStatus === 'paid' ? 'default' : 
+                                booking.paymentStatus === 'failed' ? 'destructive' : 
+                                booking.paymentStatus === 'refunded' ? 'secondary' : 
+                                'outline'
+                              }
+                            >
+                              {booking.paymentStatus?.toUpperCase() || 'PENDING'}
+                            </Badge>
+                            {booking.paymentMethod && (
+                              <span className="text-xs text-muted-foreground">
+                                {booking.paymentMethod === 'online' ? '💳 Online' : '💵 Cash'}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           {booking.paymentAmount
                             ? `$${Number(booking.paymentAmount).toFixed(2)}`
                             : "-"}
                         </TableCell>
                         <TableCell className="text-right">
-                          {booking.status === "confirmed" && (
-                            <CancelBookingButton
-                              bookingId={booking.id}
-                              onCancelled={() => fetchBookings(activeTab)}
-                              variant="ghost"
-                              size="sm"
-                            />
-                          )}
-                          {booking.status === "completed" && (
-                            <MarkNoShowButton
-                              bookingId={booking.id}
-                              onMarked={() => fetchBookings(activeTab)}
-                              variant="ghost"
-                              size="sm"
-                            />
-                          )}
+                          <div className="flex justify-end gap-2">
+                            {/* Mark Paid button for pending cash payments */}
+                            {booking.paymentMethod === 'cash' && booking.paymentStatus === 'pending' && (
+                              <MarkPaidButton
+                                bookingId={booking.id}
+                                onSuccess={() => fetchBookings(activeTab)}
+                              />
+                            )}
+                            
+                            {booking.status === "confirmed" && (
+                              <CancelBookingButton
+                                bookingId={booking.id}
+                                onCancelled={() => fetchBookings(activeTab)}
+                                variant="ghost"
+                                size="sm"
+                              />
+                            )}
+                            {booking.status === "completed" && (
+                              <MarkNoShowButton
+                                bookingId={booking.id}
+                                onMarked={() => fetchBookings(activeTab)}
+                                variant="ghost"
+                                size="sm"
+                              />
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

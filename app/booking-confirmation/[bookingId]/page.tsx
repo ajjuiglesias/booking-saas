@@ -22,6 +22,8 @@ interface Booking {
   status: string
   attendees: number
   paymentAmount: number | null
+  paymentStatus: string
+  paymentMethod: string | null
   service: {
     name: string
     durationMinutes: number
@@ -248,12 +250,50 @@ END:VCALENDAR`
               </span>
             </div>
 
+            {/* Payment Status */}
+            {booking.paymentMethod && (
+              <>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Payment Method</span>
+                  <span className="font-medium">
+                    {booking.paymentMethod === 'online' ? '💳 Online Payment' : '💵 Cash Payment'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Payment Status</span>
+                  <Badge variant={booking.paymentStatus === 'paid' ? 'default' : 'outline'}>
+                    {booking.paymentStatus.toUpperCase()}
+                  </Badge>
+                </div>
+              </>
+            )}
+
+            <Separator />
+
             {/* Status */}
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Status</span>
+              <span className="text-sm text-muted-foreground">Booking Status</span>
               <Badge variant="default" className="bg-green-600">
                 {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
               </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Check-In Instructions */}
+        <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900 no-print">
+          <CardContent className="pt-6 space-y-3">
+            <h3 className="font-semibold text-blue-900 dark:text-blue-100">📱 Check-In Instructions</h3>
+            <div className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
+              <p>1. <strong>Scan the QR code above</strong> when you arrive at the venue</p>
+              <p>2. Click <strong>"Check In Now"</strong> on the check-in page</p>
+              <p>3. Your booking will be automatically confirmed</p>
+              {booking.paymentMethod === 'cash' && booking.paymentStatus === 'pending' && (
+                <p className="mt-2 p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded">
+                  💰 <strong>Cash Payment:</strong> Will be marked as paid when you check in
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

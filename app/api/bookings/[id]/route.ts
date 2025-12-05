@@ -24,6 +24,7 @@ export async function GET(
                         name: true,
                         color: true,
                         durationMinutes: true,
+                        price: true,
                     },
                 },
                 customer: {

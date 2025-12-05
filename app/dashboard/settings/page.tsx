@@ -7,6 +7,7 @@ import ProfileForm from "@/components/settings/profile-form"
 import BookingSettingsForm from "@/components/settings/booking-settings-form"
 import AppearanceForm from "@/components/settings/appearance-form"
 import NotificationsForm from "@/components/settings/notifications-form"
+import { PaymentSettingsForm } from "@/components/settings/payment-settings-form"
 
 export default function SettingsPage() {
   return (
@@ -19,6 +20,7 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="booking">Booking Settings</TabsTrigger>
+          <TabsTrigger value="payment">Payment</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
@@ -33,6 +35,10 @@ export default function SettingsPage() {
           <Card>
             <BookingSettingsForm />
           </Card>
+        </TabsContent>
+
+        <TabsContent value="payment" className="space-y-4">
+          <PaymentSettingsForm />
         </TabsContent>
 
         <TabsContent value="appearance" className="space-y-4">
